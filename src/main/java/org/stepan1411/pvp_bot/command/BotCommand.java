@@ -18,6 +18,7 @@ import org.stepan1411.pvp_bot.bot.BotFaction;
 import org.stepan1411.pvp_bot.bot.BotKits;
 import org.stepan1411.pvp_bot.bot.BotManager;
 import org.stepan1411.pvp_bot.bot.BotNameGenerator;
+import org.stepan1411.pvp_bot.bot.BotPath;
 import org.stepan1411.pvp_bot.bot.BotSettings;
 import org.stepan1411.pvp_bot.gui.SettingsGui;
 import org.stepan1411.pvp_bot.stats.StatsReporter;
@@ -52,6 +53,10 @@ public class BotCommand {
     // РџРѕРґСЃРєР°Р·РєРё РґР»СЏ РєРёС‚РѕРІ
     private static final SuggestionProvider<ServerCommandSource> KIT_SUGGESTIONS = (ctx, builder) -> 
         CommandSource.suggestMatching(BotKits.getKitNames(), builder);
+    
+    // РџРѕРґСЃРєР°Р·РєРё РґР»СЏ РїСѓС‚РµР№
+    private static final SuggestionProvider<ServerCommandSource> PATH_SUGGESTIONS = (ctx, builder) -> 
+        CommandSource.suggestMatching(BotPath.getAllPaths().keySet(), builder);
 
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         dispatcher.register(
@@ -798,16 +803,19 @@ public class BotCommand {
                     )
                     .then(CommandManager.literal("delete")
                         .then(CommandManager.argument("name", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
                             .executes(ctx -> deletePath(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
                         )
                     )
                     .then(CommandManager.literal("addpoint")
                         .then(CommandManager.argument("name", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
                             .executes(ctx -> addPathPoint(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
                         )
                     )
                     .then(CommandManager.literal("removepoint")
                         .then(CommandManager.argument("name", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
                             .executes(ctx -> removeLastPathPoint(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
                             .then(CommandManager.argument("index", IntegerArgumentType.integer(0))
                                 .executes(ctx -> removePathPoint(ctx.getSource(), StringArgumentType.getString(ctx, "name"), IntegerArgumentType.getInteger(ctx, "index")))
@@ -816,13 +824,23 @@ public class BotCommand {
                     )
                     .then(CommandManager.literal("clear")
                         .then(CommandManager.argument("name", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
                             .executes(ctx -> clearPath(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
                         )
                     )
                     .then(CommandManager.literal("loop")
                         .then(CommandManager.argument("name", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
                             .then(CommandManager.argument("value", BoolArgumentType.bool())
                                 .executes(ctx -> setPathLoop(ctx.getSource(), StringArgumentType.getString(ctx, "name"), BoolArgumentType.getBool(ctx, "value")))
+                            )
+                        )
+                    )
+                    .then(CommandManager.literal("attack")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
+                            .then(CommandManager.argument("value", BoolArgumentType.bool())
+                                .executes(ctx -> setPathAttack(ctx.getSource(), StringArgumentType.getString(ctx, "name"), BoolArgumentType.getBool(ctx, "value")))
                             )
                         )
                     )
@@ -830,6 +848,7 @@ public class BotCommand {
                         .then(CommandManager.argument("bot", StringArgumentType.word())
                             .suggests(BOT_SUGGESTIONS)
                             .then(CommandManager.argument("path", StringArgumentType.word())
+                                .suggests(PATH_SUGGESTIONS)
                                 .executes(ctx -> startPathFollowing(ctx.getSource(), StringArgumentType.getString(ctx, "bot"), StringArgumentType.getString(ctx, "path")))
                             )
                         )
@@ -843,8 +862,17 @@ public class BotCommand {
                     .then(CommandManager.literal("list")
                         .executes(ctx -> listPaths(ctx.getSource()))
                     )
+                    .then(CommandManager.literal("show")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
+                            .then(CommandManager.argument("visible", BoolArgumentType.bool())
+                                .executes(ctx -> showPath(ctx.getSource(), StringArgumentType.getString(ctx, "name"), BoolArgumentType.getBool(ctx, "visible")))
+                            )
+                        )
+                    )
                     .then(CommandManager.literal("info")
                         .then(CommandManager.argument("name", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
                             .executes(ctx -> pathInfo(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
                         )
                     )
@@ -1591,7 +1619,10 @@ public class BotCommand {
     
     private static int createPath(ServerCommandSource source, String name) {
         if (org.stepan1411.pvp_bot.bot.BotPath.createPath(name)) {
+            // Автоматически включаем визуализацию
+            org.stepan1411.pvp_bot.bot.BotPath.setPathVisible(name, true);
             source.sendFeedback(() -> Text.literal("§aPath '" + name + "' created"), true);
+            source.sendFeedback(() -> Text.literal("§7Visualization enabled. To disable: §e/pvpbot path show " + name + " false"), false);
             return 1;
         } else {
             source.sendError(Text.literal("§cPath '" + name + "' already exists"));
@@ -1619,6 +1650,11 @@ public class BotCommand {
         net.minecraft.util.math.Vec3d pos = new net.minecraft.util.math.Vec3d(player.getX(), player.getY(), player.getZ());
         if (org.stepan1411.pvp_bot.bot.BotPath.addPoint(name, pos)) {
             var path = org.stepan1411.pvp_bot.bot.BotPath.getPath(name);
+            // Автоматически включаем визуализацию если ещё не включена
+            if (!org.stepan1411.pvp_bot.bot.BotPath.isPathVisible(name)) {
+                org.stepan1411.pvp_bot.bot.BotPath.setPathVisible(name, true);
+                source.sendFeedback(() -> Text.literal("§7Visualization enabled. To disable: §e/pvpbot path show " + name + " false"), false);
+            }
             source.sendFeedback(() -> Text.literal(String.format("§aPoint #%d added to path '%s' at (%.1f, %.1f, %.1f)", 
                 path.points.size(), name, pos.x, pos.y, pos.z)), true);
             return 1;
@@ -1668,6 +1704,21 @@ public class BotCommand {
         }
     }
     
+    private static int setPathAttack(ServerCommandSource source, String name, boolean attack) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.setAttack(name, attack)) {
+            if (attack) {
+                source.sendFeedback(() -> Text.literal("§aPath '" + name + "' attack: enabled"), true);
+            } else {
+                source.sendFeedback(() -> Text.literal("§aPath '" + name + "' attack: disabled"), true);
+                source.sendFeedback(() -> Text.literal("§7Bot will ignore attacks and continue following path"), false);
+            }
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + name + "' not found"));
+            return 0;
+        }
+    }
+    
     private static int startPathFollowing(ServerCommandSource source, String botName, String pathName) {
         if (org.stepan1411.pvp_bot.bot.BotPath.startFollowing(botName, pathName)) {
             source.sendFeedback(() -> Text.literal("§aBot '" + botName + "' started following path '" + pathName + "'"), true);
@@ -1699,8 +1750,8 @@ public class BotCommand {
         for (var entry : paths.entrySet()) {
             String name = entry.getKey();
             var path = entry.getValue();
-            source.sendFeedback(() -> Text.literal(String.format("§e%s§7: %d points, loop: %s", 
-                name, path.points.size(), path.loop)), false);
+            source.sendFeedback(() -> Text.literal(String.format("§e%s§7: %d points, loop: %s, attack: %s", 
+                name, path.points.size(), path.loop, path.attack)), false);
         }
         return paths.size();
     }
@@ -1715,6 +1766,7 @@ public class BotCommand {
         source.sendFeedback(() -> Text.literal("§6=== Path: " + name + " ==="), false);
         source.sendFeedback(() -> Text.literal("§7Points: " + path.points.size()), false);
         source.sendFeedback(() -> Text.literal("§7Loop: " + path.loop), false);
+        source.sendFeedback(() -> Text.literal("§7Attack: " + path.attack), false);
         
         for (int i = 0; i < path.points.size(); i++) {
             var point = path.points.get(i);
@@ -1724,5 +1776,20 @@ public class BotCommand {
         }
         
         return 1;
+    }
+    
+    private static int showPath(ServerCommandSource source, String name, boolean visible) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.setPathVisible(name, visible)) {
+            if (visible) {
+                source.sendFeedback(() -> Text.literal("§aPath '" + name + "' visualization enabled"), true);
+                source.sendFeedback(() -> Text.literal("§7To disable: §e/pvpbot path show " + name + " false"), false);
+            } else {
+                source.sendFeedback(() -> Text.literal("§aPath '" + name + "' visualization disabled"), true);
+            }
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + name + "' not found"));
+            return 0;
+        }
     }
 }

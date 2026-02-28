@@ -362,6 +362,26 @@ public class BotNavigation {
     }
     
     /**
+     * Поворот к позиции
+     */
+    public static void lookAtPosition(ServerPlayerEntity bot, Vec3d targetPos) {
+        Vec3d botPos = bot.getEyePos();
+        
+        double dx = targetPos.x - botPos.x;
+        double dy = targetPos.y - botPos.y;
+        double dz = targetPos.z - botPos.z;
+        
+        double horizontalDist = Math.sqrt(dx * dx + dz * dz);
+        
+        float yaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
+        float pitch = (float) -(Math.atan2(dy, horizontalDist) * (180.0 / Math.PI));
+        
+        bot.setYaw(yaw);
+        bot.setPitch(pitch);
+        bot.setHeadYaw(yaw);
+    }
+    
+    /**
      * Поворот от цели (для убегания)
      */
     public static void lookAway(ServerPlayerEntity bot, Entity target) {

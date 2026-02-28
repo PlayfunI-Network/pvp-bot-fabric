@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import org.stepan1411.pvp_bot.bot.BotDamageHandler;
 import org.stepan1411.pvp_bot.bot.BotKits;
 import org.stepan1411.pvp_bot.bot.BotManager;
+import org.stepan1411.pvp_bot.bot.BotPath;
 import org.stepan1411.pvp_bot.bot.BotTicker;
 import org.stepan1411.pvp_bot.command.BotCommand;
 import org.stepan1411.pvp_bot.stats.StatsReporter;
@@ -29,7 +30,8 @@ public class Pvp_bot implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             BotManager.init(server);
             BotKits.init(server);
-            StatsReporter.start(server); // Р—Р°РїСѓСЃРєР°РµРј РѕС‚РїСЂР°РІРєСѓ СЃС‚Р°С‚РёСЃС‚РёРєРё
+            BotPath.init(); // Загрузка путей
+            StatsReporter.start(server);
         });
         
         // РЎРѕС…СЂР°РЅРµРЅРёРµ РїСЂРё РѕСЃС‚Р°РЅРѕРІРєРµ СЃРµСЂРІРµСЂР°

@@ -184,7 +184,7 @@ public class StatsReporter {
      */
     private static String loadOrCreateServerId() {
         try {
-            Path configDir = FabricLoader.getInstance().getConfigDir().resolve("pvpbot");
+            Path configDir = org.stepan1411.pvp_bot.config.WorldConfigHelper.getGlobalConfigDir();
             Path serverIdFile = configDir.resolve("server_id.txt");
             
             if (Files.exists(serverIdFile)) {

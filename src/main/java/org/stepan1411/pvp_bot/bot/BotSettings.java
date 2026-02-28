@@ -3,6 +3,7 @@ package org.stepan1411.pvp_bot.bot;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
+import org.stepan1411.pvp_bot.config.WorldConfigHelper;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -85,7 +86,7 @@ public class BotSettings {
     private boolean bhopEnabled = true;           // Bunny hop (РїСЂС‹Р¶РєРё РїСЂРё Р±РµРіРµ)
     private int bhopCooldown = 12;                // РљСѓР»РґР°СѓРЅ РјРµР¶РґСѓ РїСЂС‹Р¶РєР°РјРё (С‚РёРєРё)
     private double jumpBoost = 0.0;               // Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РІС‹СЃРѕС‚Р° РїСЂС‹Р¶РєР° (0.0 - 0.5)
-    private boolean idleWanderEnabled = true;     // Р‘СЂРѕРґРёС‚СЊ РєРѕРіРґР° РЅРµС‚ С†РµР»Рё
+    private boolean idleWanderEnabled = false;     // Р‘СЂРѕРґРёС‚СЊ РєРѕРіРґР° РЅРµС‚ С†РµР»Рё
     private double idleWanderRadius = 10.0;       // Р Р°РґРёСѓСЃ Р±Р»СѓР¶РґР°РЅРёСЏ
     
     // ============ Р¤СЂР°РєС†РёРё Рё РѕС€РёР±РєРё ============
@@ -117,7 +118,7 @@ public class BotSettings {
             // РРіРЅРѕСЂРёСЂСѓРµРј
         }
         
-        configPath = configDir.resolve("settings.json");
+        configPath = WorldConfigHelper.getWorldConfigDir().resolve("settings.json");
         
         if (Files.exists(configPath)) {
             try (Reader reader = Files.newBufferedReader(configPath)) {

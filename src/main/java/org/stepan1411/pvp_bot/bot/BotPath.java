@@ -356,7 +356,7 @@ public class BotPath {
             System.err.println("[PVP_BOT] Failed to create config directory: " + e.getMessage());
         }
         
-        configPath = configDir.resolve("paths.json");
+        configPath = org.stepan1411.pvp_bot.config.WorldConfigHelper.getWorldConfigDir().resolve("paths.json");
         load();
     }
     

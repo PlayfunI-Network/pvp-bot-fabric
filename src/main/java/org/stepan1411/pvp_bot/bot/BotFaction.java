@@ -189,7 +189,7 @@ public class BotFaction {
             // РРіРЅРѕСЂРёСЂСѓРµРј
         }
         
-        configPath = configDir.resolve("factions.json");
+        configPath = org.stepan1411.pvp_bot.config.WorldConfigHelper.getWorldConfigDir().resolve("factions.json");
         
         if (Files.exists(configPath)) {
             try (Reader reader = Files.newBufferedReader(configPath)) {

@@ -3,8 +3,12 @@ build/reports/problems/problems-report.html
 /baritone
 /meteor
 /build/reports/problems
-/.gradle
-/.gradle/loom-cache
-/build/tmp
 /run
 /wiki
+src/count_lines.py
+/.gradle
+/build/classes
+/build/reports
+/build/tmp
+/build/resources
+build/reports/problems/problems-report.html

@@ -9,6 +9,7 @@ import org.stepan1411.pvp_bot.bot.BotManager;
 import org.stepan1411.pvp_bot.bot.BotPath;
 import org.stepan1411.pvp_bot.bot.BotTicker;
 import org.stepan1411.pvp_bot.command.BotCommand;
+import org.stepan1411.pvp_bot.config.WorldConfigHelper;
 import org.stepan1411.pvp_bot.stats.StatsReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,14 @@ public class Pvp_bot implements ModInitializer {
 
         // РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїСЂРё СЃС‚Р°СЂС‚Рµ СЃРµСЂРІРµСЂР° - РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ Р±РѕС‚РѕРІ
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            WorldConfigHelper.init(server); // Инициализация имени мира
+            
+            // Регистрируем callback для смены мира
+            WorldConfigHelper.setOnWorldChangeCallback(() -> {
+                BotManager.switchWorld(server);
+                BotPath.init(); // Перезагрузка путей
+            });
+            
             BotManager.init(server);
             BotKits.init(server);
             BotPath.init(); // Загрузка путей

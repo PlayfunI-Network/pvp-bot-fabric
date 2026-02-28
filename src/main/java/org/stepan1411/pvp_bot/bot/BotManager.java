@@ -8,6 +8,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.world.GameMode;
+import org.stepan1411.pvp_bot.config.WorldConfigHelper;
 
 import java.io.Reader;
 import java.io.Writer;
@@ -25,14 +26,8 @@ public class BotManager {
     private static final Map<String, BotData> botDataMap = new HashMap<>();
     private static Path savePath;
     private static boolean initialized = false;
-    
-    // РЎС‚Р°С‚РёСЃС‚РёРєР°
     private static int botsSpawnedTotal = 0;
     private static int botsKilledTotal = 0;
-    
-    /**
-     * Р”Р°РЅРЅС‹Рµ Р±РѕС‚Р° РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ
-     */
     public static class BotData {
         public String name;
         public double x, y, z;
@@ -54,21 +49,19 @@ public class BotManager {
         }
     }
     
-    /**
-     * РљР»Р°СЃСЃ РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЃС‚Р°С‚РёСЃС‚РёРєРё
-     */
     public static class StatsData {
         public int botsSpawnedTotal = 0;
         public int botsKilledTotal = 0;
     }
-
-    /**
-     * РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ - Р·Р°РіСЂСѓР·РєР° СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… Р±РѕС‚РѕРІ
-     */
+    
     public static void init(MinecraftServer server) {
         if (initialized) return;
         
-        // РЎРѕР·РґР°С‘Рј РїР°РїРєСѓ config/pvpbot РµСЃР»Рё РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
+        // Очищаем состояние перед загрузкой нового мира
+        bots.clear();
+        botDataMap.clear();
+        System.out.println("[PVP_BOT] Initializing BotManager for new world...");
+        
         Path configDir = FabricLoader.getInstance().getConfigDir().resolve("pvpbot");
         try {
             Files.createDirectories(configDir);
@@ -76,22 +69,18 @@ public class BotManager {
             System.out.println("[PVP_BOT] Failed to create config directory: " + e.getMessage());
         }
         
-        savePath = configDir.resolve("bots.json");
+        savePath = org.stepan1411.pvp_bot.config.WorldConfigHelper.getWorldConfigDir().resolve("bots.json");
+        System.out.println("[PVP_BOT] Bot config path: " + savePath);
         loadBots();
         loadStats();
-        
-        // Р РµСЃРїР°РІРЅРёРј СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… Р±РѕС‚РѕРІ С‚РѕР»СЊРєРѕ РµСЃР»Рё РІРєР»СЋС‡РµРЅР° РЅР°СЃС‚СЂРѕР№РєР° botsRelogs
         BotSettings settings = BotSettings.get();
         if (settings.isBotsRelogs() && !botDataMap.isEmpty()) {
             System.out.println("[PVP_BOT] Restoring " + botDataMap.size() + " bots...");
             Map<String, BotData> botsToRestore = new HashMap<>(botDataMap);
             bots.clear();
             botDataMap.clear();
-            
-            // Р—Р°РїСѓСЃРєР°РµРј СЂРµСЃРїР°РІРЅ СЃ Р·Р°РґРµСЂР¶РєРѕР№
             server.execute(() -> restoreBotsDelayed(server, botsToRestore, 0));
         } else if (!settings.isBotsRelogs()) {
-            // Р•СЃР»Рё СЂРµР»РѕРіРё РІС‹РєР»СЋС‡РµРЅС‹ - РѕС‡РёС‰Р°РµРј СЃРїРёСЃРѕРє
             bots.clear();
             botDataMap.clear();
             saveBots();
@@ -105,7 +94,7 @@ public class BotManager {
     }
     
     private static void restoreBotsDelayedWithRetry(MinecraftServer server, Map<String, BotData> botsToRestore, int index, int retryCount) {
-        final int MAX_RETRIES = 2; // РњР°РєСЃРёРјСѓРј 2 РїРѕРІС‚РѕСЂРЅС‹Рµ РїРѕРїС‹С‚РєРё (РІСЃРµРіРѕ 3 РїРѕРїС‹С‚РєРё)
+        final int MAX_RETRIES = 2;
         
         if (index >= botsToRestore.size()) {
             System.out.println("[PVP_BOT] Restored " + bots.size() + " bots");
@@ -116,23 +105,17 @@ public class BotManager {
         if (index < names.length) {
             String name = names[index];
             BotData data = botsToRestore.get(name);
-            
-            // РџСЂРѕРІРµСЂСЏРµРј РЅРµ РѕРЅР»Р°Р№РЅ Р»Рё СѓР¶Рµ СЂРµР°Р»СЊРЅС‹Р№ РёРіСЂРѕРє СЃ С‚Р°РєРёРј РЅРёРєРѕРј
             ServerPlayerEntity existingPlayer = server.getPlayerManager().getPlayer(name);
             if (existingPlayer != null && !bots.contains(name)) {
                 System.out.println("[PVP_BOT] Skipping bot '" + name + "': real player with this name is online");
-                // РџРµСЂРµС…РѕРґРёРј Рє СЃР»РµРґСѓСЋС‰РµРјСѓ Р±РѕС‚Сѓ
                 final int nextIndex = index + 1;
                 server.execute(() -> restoreBotsDelayedWithRetry(server, botsToRestore, nextIndex, 0));
                 return;
             }
-            
-            // РЎРїР°РІРЅРёРј Р±РѕС‚Р° СЃ РїРѕР·РёС†РёРµР№ Рё РёР·РјРµСЂРµРЅРёРµРј
             var dispatcher = server.getCommandManager().getDispatcher();
             boolean success = false;
             
             try {
-                // Р¤РѕСЂРјР°С‚: player NAME spawn at X Y Z facing YAW PITCH in DIMENSION in GAMEMODE
                 String command = String.format(java.util.Locale.US,
                     "player %s spawn at %.2f %.2f %.2f facing %.2f %.2f in %s in %s",
                     name, data.x, data.y, data.z, data.yaw, data.pitch, data.dimension, data.gamemode
@@ -250,13 +233,18 @@ public class BotManager {
      * Р—Р°РіСЂСѓР·РєР° СЃРїРёСЃРєР° Р±РѕС‚РѕРІ
      */
     private static void loadBots() {
-        if (savePath == null || !Files.exists(savePath)) return;
+        System.out.println("[PVP_BOT] Loading bots from: " + savePath);
+        if (savePath == null || !Files.exists(savePath)) {
+            System.out.println("[PVP_BOT] No bots file found, starting fresh");
+            return;
+        }
         
         try (Reader reader = Files.newBufferedReader(savePath)) {
             Map<String, BotData> loaded = GSON.fromJson(reader, new TypeToken<Map<String, BotData>>(){}.getType());
             if (loaded != null) {
                 botDataMap.putAll(loaded);
                 bots.addAll(loaded.keySet());
+                System.out.println("[PVP_BOT] Loaded " + loaded.size() + " bots from file");
             }
         } catch (Exception e) {
             System.out.println("[PVP_BOT] Failed to load bots: " + e.getMessage());
@@ -271,6 +259,37 @@ public class BotManager {
         saveBots();
         initialized = false;
     }
+    /**
+     * Переключение мира - сохраняет текущихботов и загружает ботов нового мира
+     */
+    public static void switchWorld(MinecraftServer server) {
+        // Сохраняем текущих ботов
+        updateBotData(server);
+        saveBots();
+        saveStats();
+
+        // Очищаем текущее состояние
+        bots.clear();
+        botDataMap.clear();
+
+        // Обновляем путь к файлу конфигурации для нового мира
+        savePath = org.stepan1411.pvp_bot.config.WorldConfigHelper.getWorldConfigDir().resolve("bots.json");
+
+        // Загружаем ботов нового мира
+        loadBots();
+
+        // Респавним ботов если включена настройка
+        BotSettings settings = BotSettings.get();
+        if (settings.isBotsRelogs() && !botDataMap.isEmpty()) {
+            System.out.println("[PVP_BOT] Switching world, restoring " + botDataMap.size() + " bots...");
+            Map<String, BotData> botsToRestore = new HashMap<>(botDataMap);
+            bots.clear();
+            botDataMap.clear();
+
+            server.execute(() -> restoreBotsDelayed(server, botsToRestore, 0));
+        }
+    }
+
 
     public static boolean spawnBot(MinecraftServer server, String name, ServerCommandSource source) {
         // РџСЂРѕРІРµСЂСЏРµРј, СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё СѓР¶Рµ РёРіСЂРѕРє СЃ С‚Р°РєРёРј РёРјРµРЅРµРј РЅР° СЃРµСЂРІРµСЂРµ
@@ -550,9 +569,7 @@ public class BotManager {
      * РЎРѕС…СЂР°РЅРµРЅРёРµ СЃС‚Р°С‚РёСЃС‚РёРєРё
      */
     private static void saveStats() {
-        if (savePath == null) return;
-        
-        Path statsPath = savePath.getParent().resolve("stats.json");
+        Path statsPath = WorldConfigHelper.getGlobalConfigDir().resolve("stats.json");
         try (Writer writer = Files.newBufferedWriter(statsPath)) {
             StatsData stats = new StatsData();
             stats.botsSpawnedTotal = botsSpawnedTotal;
@@ -567,9 +584,7 @@ public class BotManager {
      * Р—Р°РіСЂСѓР·РєР° СЃС‚Р°С‚РёСЃС‚РёРєРё
      */
     private static void loadStats() {
-        if (savePath == null) return;
-        
-        Path statsPath = savePath.getParent().resolve("stats.json");
+        Path statsPath = WorldConfigHelper.getGlobalConfigDir().resolve("stats.json");
         if (!Files.exists(statsPath)) return;
         
         try (Reader reader = Files.newBufferedReader(statsPath)) {

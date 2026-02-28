@@ -42,7 +42,7 @@ public class BotKits {
             // РРіРЅРѕСЂРёСЂСѓРµРј
         }
         
-        configPath = configDir.resolve("kits.json");
+        configPath = org.stepan1411.pvp_bot.config.WorldConfigHelper.getGlobalConfigDir().resolve("kits.json");
         load();
     }
     

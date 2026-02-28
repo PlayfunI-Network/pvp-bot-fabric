@@ -22,6 +22,7 @@ public class Pvp_bot implements ModInitializer {
     @Override
     public void onInitialize() {
         LOGGER.info("PVP Bot mod loaded!");
+        LOGGER.info("PVP Bot API version: " + org.stepan1411.pvp_bot.api.PvpBotAPI.getApiVersion());
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             BotCommand.register(dispatcher);

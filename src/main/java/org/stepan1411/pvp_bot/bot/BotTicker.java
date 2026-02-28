@@ -40,6 +40,12 @@ public class BotTicker {
         for (String botName : BotManager.getAllBots()) {
             ServerPlayerEntity bot = BotManager.getBot(server, botName);
             if (bot != null && bot.isAlive()) {
+                // Fire tick event
+                try {
+                    org.stepan1411.pvp_bot.api.PvpBotAPI.getEventManager().fireTickEvent(bot);
+                } catch (Exception e) {
+                    System.err.println("[PVP_BOT_API] Error firing tick event: " + e.getMessage());
+                }
                 // Утилиты (тотем, еда, щит, плавание) - каждый тик
                 BotUtils.update(bot, server);
                 

@@ -292,6 +292,7 @@ public class BotManager {
 
 
     public static boolean spawnBot(MinecraftServer server, String name, ServerCommandSource source) {
+        boolean isNewBot = !bots.contains(name);
         // РџСЂРѕРІРµСЂСЏРµРј, СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё СѓР¶Рµ РёРіСЂРѕРє СЃ С‚Р°РєРёРј РёРјРµРЅРµРј РЅР° СЃРµСЂРІРµСЂРµ
         ServerPlayerEntity existingPlayer = server.getPlayerManager().getPlayer(name);
         if (existingPlayer != null && existingPlayer.isAlive()) {
@@ -331,6 +332,13 @@ public class BotManager {
                 incrementBotsSpawned(); // РЈРІРµР»РёС‡РёРІР°РµРј СЃС‡РµС‚С‡РёРє
                 saveBots();
                 System.out.println("[PVP_BOT] Added bot to list (delayed): " + name);
+                
+                // Fire spawn event
+                try {
+                    org.stepan1411.pvp_bot.api.PvpBotAPI.getEventManager().fireSpawnEvent(newBot);
+                } catch (Exception e) {
+                    System.err.println("[PVP_BOT_API] Error firing spawn event: " + e.getMessage());
+                }
             } else if (newBot != null && bots.contains(name)) {
                 // Р‘РѕС‚ СѓР¶Рµ РІ СЃРїРёСЃРєРµ, РЅРѕ РѕР±РЅРѕРІРёРј РґР°РЅРЅС‹Рµ
                 botDataMap.put(name, new BotData(newBot));
@@ -348,6 +356,12 @@ public class BotManager {
                 incrementBotsSpawned(); // РЈРІРµР»РёС‡РёРІР°РµРј СЃС‡РµС‚С‡РёРє
                 saveBots();
                 System.out.println("[PVP_BOT] Added bot to list (immediate): " + name);
+                // Fire spawn event
+                try {
+                    org.stepan1411.pvp_bot.api.BotAPIIntegration.fireSpawnEvent(newBot);
+                } catch (Exception e) {
+                    System.err.println("[PVP_BOT_API] Error firing spawn event: " + e.getMessage());
+                }
             }
             return true;
         }
@@ -451,6 +465,13 @@ public class BotManager {
             boolean isDead = !bot.isAlive() || bot.getHealth() <= 0 || bot.isDead();
             if (isDead) {
                 // РЈРґР°Р»СЏРµРј РјС‘СЂС‚РІРѕРіРѕ Р±РѕС‚Р° РёР· СЃРїРёСЃРєР°
+                // Fire death event BEFORE removing bot
+                try {
+                    org.stepan1411.pvp_bot.api.BotAPIIntegration.fireDeathEvent(bot);
+                } catch (Exception e) {
+                    System.err.println("[PVP_BOT_API] Error firing death event: " + e.getMessage());
+                }
+                
                 bots.remove(name);
                 botDataMap.remove(name);
                 BotCombat.removeState(name);

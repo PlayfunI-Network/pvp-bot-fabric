@@ -958,6 +958,16 @@ public class BotCombat {
     private static void attack(ServerPlayerEntity bot, Entity target) {
         BotSettings settings = BotSettings.get();
         
+        // Fire attack event - allow addons to cancel attack
+        try {
+            boolean cancelled = org.stepan1411.pvp_bot.api.BotAPIIntegration.fireAttackEvent(bot, target);
+            if (cancelled) {
+                return; // Attack cancelled by addon
+            }
+        } catch (Exception e) {
+            System.err.println("[PVP_BOT_API] Error firing attack event: " + e.getMessage());
+        }
+        
         // РЁР°РЅСЃ РїСЂРѕРјР°С…Р°
         if (random.nextInt(100) < settings.getMissChance()) {
             // РџСЂРѕРјР°С… - РїСЂРѕСЃС‚Рѕ РјР°С€РµРј СЂСѓРєРѕР№

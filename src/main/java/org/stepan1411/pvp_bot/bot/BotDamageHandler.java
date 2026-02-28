@@ -9,20 +9,31 @@ import net.minecraft.server.network.ServerPlayerEntity;
 public class BotDamageHandler {
     
     public static void register() {
-        // Р РµРіРёСЃС‚СЂРёСЂСѓРµРј РѕР±СЂР°Р±РѕС‚С‡РёРє СѓСЂРѕРЅР° С‡РµСЂРµР· Fabric API
+        // Register damage handler via Fabric API
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
-            // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ ServerPlayerEntity
+            // Check if this is a ServerPlayerEntity
             if (entity instanceof ServerPlayerEntity player) {
                 String playerName = player.getName().getString();
                 
-                // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚РѕС‚ РёРіСЂРѕРє РЅР°С€РёРј Р±РѕС‚РѕРј
+                // Check if this player is our bot
                 if (BotManager.getAllBots().contains(playerName)) {
-                    // Р’С‹Р·С‹РІР°РµРј РѕР±СЂР°Р±РѕС‚С‡РёРє Р±РѕСЏ
+                    // Fire damage event - allow addons to cancel damage
+                    try {
+                        Entity attacker = source.getAttacker();
+                        boolean cancelled = org.stepan1411.pvp_bot.api.BotAPIIntegration.fireDamageEvent(player, attacker, amount);
+                        if (cancelled) {
+                            return false; // Cancel damage
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[PVP_BOT_API] Error firing damage event: " + e.getMessage());
+                    }
+                    
+                    // Call combat handler
                     BotCombat.onBotDamaged(player, source);
                 }
             }
             
-            // Р’РѕР·РІСЂР°С‰Р°РµРј true С‡С‚РѕР±С‹ СѓСЂРѕРЅ РїСЂРѕС€С‘Р»
+            // Return true to allow damage
             return true;
         });
     }

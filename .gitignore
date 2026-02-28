@@ -4,7 +4,6 @@ build/reports/problems/problems-report.html
 /meteor
 /build/reports/problems
 /run
-/wiki
 src/count_lines.py
 /.gradle
 /build/classes

@@ -788,6 +788,67 @@ public class BotCommand {
                 )
                 
                 // /pvpbot updatestats - РѕС‚РїСЂР°РІРёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ СЃРµР№С‡Р°СЃ (РґР»СЏ РѕС‚Р»Р°РґРєРё)
+                
+                // /pvpbot path - система путей для патрулирования
+                .then(CommandManager.literal("path")
+                    .then(CommandManager.literal("create")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .executes(ctx -> createPath(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                        )
+                    )
+                    .then(CommandManager.literal("delete")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .executes(ctx -> deletePath(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                        )
+                    )
+                    .then(CommandManager.literal("addpoint")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .executes(ctx -> addPathPoint(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                        )
+                    )
+                    .then(CommandManager.literal("removepoint")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .executes(ctx -> removeLastPathPoint(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                            .then(CommandManager.argument("index", IntegerArgumentType.integer(0))
+                                .executes(ctx -> removePathPoint(ctx.getSource(), StringArgumentType.getString(ctx, "name"), IntegerArgumentType.getInteger(ctx, "index")))
+                            )
+                        )
+                    )
+                    .then(CommandManager.literal("clear")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .executes(ctx -> clearPath(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                        )
+                    )
+                    .then(CommandManager.literal("loop")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .then(CommandManager.argument("value", BoolArgumentType.bool())
+                                .executes(ctx -> setPathLoop(ctx.getSource(), StringArgumentType.getString(ctx, "name"), BoolArgumentType.getBool(ctx, "value")))
+                            )
+                        )
+                    )
+                    .then(CommandManager.literal("start")
+                        .then(CommandManager.argument("bot", StringArgumentType.word())
+                            .suggests(BOT_SUGGESTIONS)
+                            .then(CommandManager.argument("path", StringArgumentType.word())
+                                .executes(ctx -> startPathFollowing(ctx.getSource(), StringArgumentType.getString(ctx, "bot"), StringArgumentType.getString(ctx, "path")))
+                            )
+                        )
+                    )
+                    .then(CommandManager.literal("stop")
+                        .then(CommandManager.argument("bot", StringArgumentType.word())
+                            .suggests(BOT_SUGGESTIONS)
+                            .executes(ctx -> stopPathFollowing(ctx.getSource(), StringArgumentType.getString(ctx, "bot")))
+                        )
+                    )
+                    .then(CommandManager.literal("list")
+                        .executes(ctx -> listPaths(ctx.getSource()))
+                    )
+                    .then(CommandManager.literal("info")
+                        .then(CommandManager.argument("name", StringArgumentType.word())
+                            .executes(ctx -> pathInfo(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                        )
+                    )
+                )
                 .then(CommandManager.literal("updatestats")
                     .executes(ctx -> updateStats(ctx.getSource()))
                 )
@@ -1523,6 +1584,145 @@ public class BotCommand {
         source.sendFeedback(() -> Text.literal("Target visualization: " + settings.targetVisualization), false);
         source.sendFeedback(() -> Text.literal("Combat info: " + settings.combatInfo), false);
         source.sendFeedback(() -> Text.literal("Navigation info: " + settings.navigationInfo), false);
+        return 1;
+    }
+    
+    // ========== PATH COMMANDS ==========
+    
+    private static int createPath(ServerCommandSource source, String name) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.createPath(name)) {
+            source.sendFeedback(() -> Text.literal("§aPath '" + name + "' created"), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + name + "' already exists"));
+            return 0;
+        }
+    }
+    
+    private static int deletePath(ServerCommandSource source, String name) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.deletePath(name)) {
+            source.sendFeedback(() -> Text.literal("§aPath '" + name + "' deleted"), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + name + "' not found"));
+            return 0;
+        }
+    }
+    
+    private static int addPathPoint(ServerCommandSource source, String name) {
+        ServerPlayerEntity player = source.getPlayer();
+        if (player == null) {
+            source.sendError(Text.literal("§cOnly players can add path points"));
+            return 0;
+        }
+        
+        net.minecraft.util.math.Vec3d pos = new net.minecraft.util.math.Vec3d(player.getX(), player.getY(), player.getZ());
+        if (org.stepan1411.pvp_bot.bot.BotPath.addPoint(name, pos)) {
+            var path = org.stepan1411.pvp_bot.bot.BotPath.getPath(name);
+            source.sendFeedback(() -> Text.literal(String.format("§aPoint #%d added to path '%s' at (%.1f, %.1f, %.1f)", 
+                path.points.size(), name, pos.x, pos.y, pos.z)), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + name + "' not found"));
+            return 0;
+        }
+    }
+    
+    private static int removeLastPathPoint(ServerCommandSource source, String name) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.removeLastPoint(name)) {
+            source.sendFeedback(() -> Text.literal("§aLast point removed from path '" + name + "'"), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + name + "' not found or empty"));
+            return 0;
+        }
+    }
+    
+    private static int removePathPoint(ServerCommandSource source, String name, int index) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.removePoint(name, index)) {
+            source.sendFeedback(() -> Text.literal("§aPoint #" + index + " removed from path '" + name + "'"), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cInvalid path or index"));
+            return 0;
+        }
+    }
+    
+    private static int clearPath(ServerCommandSource source, String name) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.clearPath(name)) {
+            source.sendFeedback(() -> Text.literal("§aAll points cleared from path '" + name + "'"), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + name + "' not found"));
+            return 0;
+        }
+    }
+    
+    private static int setPathLoop(ServerCommandSource source, String name, boolean loop) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.setLoop(name, loop)) {
+            source.sendFeedback(() -> Text.literal("§aPath '" + name + "' loop: " + loop), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + name + "' not found"));
+            return 0;
+        }
+    }
+    
+    private static int startPathFollowing(ServerCommandSource source, String botName, String pathName) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.startFollowing(botName, pathName)) {
+            source.sendFeedback(() -> Text.literal("§aBot '" + botName + "' started following path '" + pathName + "'"), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cPath '" + pathName + "' not found or empty"));
+            return 0;
+        }
+    }
+    
+    private static int stopPathFollowing(ServerCommandSource source, String botName) {
+        if (org.stepan1411.pvp_bot.bot.BotPath.stopFollowing(botName)) {
+            source.sendFeedback(() -> Text.literal("§aBot '" + botName + "' stopped following path"), true);
+            return 1;
+        } else {
+            source.sendError(Text.literal("§cBot '" + botName + "' is not following any path"));
+            return 0;
+        }
+    }
+    
+    private static int listPaths(ServerCommandSource source) {
+        var paths = org.stepan1411.pvp_bot.bot.BotPath.getAllPaths();
+        if (paths.isEmpty()) {
+            source.sendFeedback(() -> Text.literal("§eNo paths created"), false);
+            return 0;
+        }
+        
+        source.sendFeedback(() -> Text.literal("§6=== Paths ==="), false);
+        for (var entry : paths.entrySet()) {
+            String name = entry.getKey();
+            var path = entry.getValue();
+            source.sendFeedback(() -> Text.literal(String.format("§e%s§7: %d points, loop: %s", 
+                name, path.points.size(), path.loop)), false);
+        }
+        return paths.size();
+    }
+    
+    private static int pathInfo(ServerCommandSource source, String name) {
+        var path = org.stepan1411.pvp_bot.bot.BotPath.getPath(name);
+        if (path == null) {
+            source.sendError(Text.literal("§cPath '" + name + "' not found"));
+            return 0;
+        }
+        
+        source.sendFeedback(() -> Text.literal("§6=== Path: " + name + " ==="), false);
+        source.sendFeedback(() -> Text.literal("§7Points: " + path.points.size()), false);
+        source.sendFeedback(() -> Text.literal("§7Loop: " + path.loop), false);
+        
+        for (int i = 0; i < path.points.size(); i++) {
+            var point = path.points.get(i);
+            int index = i;
+            source.sendFeedback(() -> Text.literal(String.format("§e#%d§7: (%.1f, %.1f, %.1f)", 
+                index, point.x, point.y, point.z)), false);
+        }
+        
         return 1;
     }
 }

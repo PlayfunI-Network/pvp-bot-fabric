@@ -3,12 +3,13 @@ package org.stepan1411.pvp_bot.bot;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.math.Vec3d;
 
 public class BotTicker {
 
     private static int tickCounter = 0;
     private static int autoSaveCounter = 0;
-    private static final int AUTO_SAVE_INTERVAL = 1200; // РђРІС‚РѕСЃРѕС…СЂР°РЅРµРЅРёРµ РєР°Р¶РґС‹Рµ 60 СЃРµРєСѓРЅРґ (1200 С‚РёРєРѕРІ)
+    private static final int AUTO_SAVE_INTERVAL = 1200; // Автосохранение каждые 60 секунд (1200 тиков)
 
     public static void register() {
         ServerTickEvents.END_SERVER_TICK.register(BotTicker::onServerTick);
@@ -20,29 +21,46 @@ public class BotTicker {
         
         int interval = BotSettings.get().getCheckInterval();
         
-        // РђРІС‚РѕСЃРѕС…СЂР°РЅРµРЅРёРµ РґР°РЅРЅС‹С… Р±РѕС‚РѕРІ РєР°Р¶РґС‹Рµ 60 СЃРµРєСѓРЅРґ
+        // Автосохранение данных ботов каждые 60 секунд
         if (autoSaveCounter >= AUTO_SAVE_INTERVAL) {
             BotManager.updateBotData(server);
             BotManager.saveBots();
             autoSaveCounter = 0;
         }
         
-        // РћС‡РёС‰Р°РµРј РјС‘СЂС‚РІС‹С… Р±РѕС‚РѕРІ РєР°Р¶РґС‹Рµ 20 С‚РёРєРѕРІ (1 СЃРµРєСѓРЅРґР°)
+        // Очищаем мёртвых ботов каждые 20 тиков (1 секунда)
         if (tickCounter % 20 == 0) {
             BotManager.cleanupDeadBots(server);
-            // РЈР‘Р РђР›Р Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєСѓСЋ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёСЋ - С‚РµРїРµСЂСЊ С‚РѕР»СЊРєРѕ РїРѕ РєРѕРјР°РЅРґРµ /pvpbot sync
+            // УБРАЛ автоматическую синхронизацию - теперь только по команде /pvpbot sync
         }
         
         for (String botName : BotManager.getAllBots()) {
             ServerPlayerEntity bot = BotManager.getBot(server, botName);
             if (bot != null && bot.isAlive()) {
-                // РЈС‚РёР»РёС‚С‹ (С‚РѕС‚РµРј, РµРґР°, С‰РёС‚, РїР»Р°РІР°РЅРёРµ) - РєР°Р¶РґС‹Р№ С‚РёРє
+                // Утилиты (тотем, еда, щит, плавание) - каждый тик
                 BotUtils.update(bot, server);
                 
-                // Р‘РѕРµРІР°СЏ СЃРёСЃС‚РµРјР° - РєР°Р¶РґС‹Р№ С‚РёРє
+                // Боевая система - каждый тик
                 BotCombat.update(bot, server);
                 
-                // Р­РєРёРїРёСЂРѕРІРєР° - РїРѕ РёРЅС‚РµСЂРІР°Р»Сѓ (РЅРµ РІРѕ РІСЂРµРјСЏ РµРґС‹!)
+                // Следование по пути - каждый тик
+                if (BotPath.isFollowing(botName)) {
+                    Vec3d nextPoint = BotPath.getNextPoint(botName);
+                    if (nextPoint != null) {
+                        Vec3d botPos = new Vec3d(bot.getX(), bot.getY(), bot.getZ());
+                        double distance = botPos.distanceTo(nextPoint);
+                        
+                        // Если достигли точки - переходим к следующей
+                        if (distance < 1.5) {
+                            BotPath.advanceToNextPoint(botName);
+                        } else {
+                            // Двигаемся к точке с помощью навигации
+                            BotNavigation.moveTowardPosition(bot, nextPoint, 1.0);
+                        }
+                    }
+                }
+                
+                // Экипировка - по интервалу (не во время еды!)
                 if (tickCounter >= interval) {
                     var utilsState = BotUtils.getState(botName);
                     if (!utilsState.isEating) {

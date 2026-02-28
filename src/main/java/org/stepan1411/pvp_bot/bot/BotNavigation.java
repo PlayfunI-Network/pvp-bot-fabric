@@ -80,6 +80,19 @@ public class BotNavigation {
         Vec3d awayPos = new Vec3d(bot.getX() + dx * 10, bot.getY(), bot.getZ() + dz * 10);
         moveTowardPos(bot, awayPos, speed, state);
     }
+    /**
+     * Двигаться к указанной позиции с обходом препятствий
+     */
+    public static void moveTowardPosition(ServerPlayerEntity bot, Vec3d targetPos, double speed) {
+        NavigationState state = getState(bot.getName().getString());
+
+        // Уменьшаем кулдауны
+        if (state.jumpCooldown > 0) state.jumpCooldown--;
+        if (state.avoidTicks > 0) state.avoidTicks--;
+
+        moveTowardPos(bot, targetPos, speed, state);
+    }
+
     
     /**
      * Основная логика движения к позиции

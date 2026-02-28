@@ -25,6 +25,84 @@
         "es": "Comandos",
         "de": "Befehle"
       }
+    },
+    {
+      "id": "combat",
+      "icon": "⚔️",
+      "file": "Combat.md",
+      "translations": {
+        "en": "Combat",
+        "ru": "Бой",
+        "zh": "战斗",
+        "fr": "Combat",
+        "es": "combatir",
+        "de": "Kampf"
+      }
+    },
+    {
+      "id": "factions",
+      "icon": "👥",
+      "file": "Factions.md",
+      "translations": {
+        "en": "Factions",
+        "ru": "Фракции",
+        "zh": "派系",
+        "fr": "Factions",
+        "es": "Facciones",
+        "de": "Fraktionen"
+      }
+    },
+    {
+      "id": "kits",
+      "icon": "🎒",
+      "file": "Kits.md",
+      "translations": {
+        "en": "Kits",
+        "ru": "Киты",
+        "zh": "套件",
+        "fr": "Kits",
+        "es": "Kits",
+        "de": "Bausätze"
+      }
+    },
+    {
+      "id": "navigation",
+      "icon": "🚶",
+      "file": "Navigation.md",
+      "translations": {
+        "en": "Navigation",
+        "ru": "Навигация",
+        "zh": "导航",
+        "fr": "Navigation",
+        "es": "Navegación",
+        "de": "Navigation"
+      }
+    },
+    {
+      "id": "paths",
+      "icon": "🛤",
+      "file": "Paths.md",
+      "translations": {
+        "en": "Paths",
+        "ru": "Путь",
+        "zh": "路径",
+        "fr": "Chemins",
+        "es": "Caminos",
+        "de": "Wege"
+      }
+    },
+    {
+      "id": "Settings",
+      "icon": "⚙️",
+      "file": "Settings.md",
+      "translations": {
+        "en": "Settings",
+        "ru": "Настройки",
+        "zh": "设置",
+        "fr": "Paramètres",
+        "es": "Ajustes",
+        "de": "Einstellungen"
+      }
     }
   ]
 }

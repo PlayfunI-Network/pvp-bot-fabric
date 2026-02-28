@@ -1,0 +1,30 @@
+{
+  "pages": [
+    {
+      "id": "home",
+      "icon": "🏠",
+      "file": "Home.md",
+      "translations": {
+        "en": "Home",
+        "ru": "Главная",
+        "zh": "主页",
+        "fr": "Accueil",
+        "es": "Inicio",
+        "de": "Startseite"
+      }
+    },
+    {
+      "id": "commands",
+      "icon": "🎮",
+      "file": "Commands.md",
+      "translations": {
+        "en": "Commands",
+        "ru": "Команды",
+        "zh": "命令",
+        "fr": "Commandes",
+        "es": "Comandos",
+        "de": "Befehle"
+      }
+    }
+  ]
+}

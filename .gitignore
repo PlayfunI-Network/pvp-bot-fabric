@@ -1,14 +1,5 @@
-build/reports/problems/problems-report.html
 /pvpbot-stats
 /baritone
 /meteor
-/build/reports/problems
 /run
 src/count_lines.py
-/.gradle
-/build/classes
-/build/reports
-/build/tmp
-/build/resources
-build/reports/problems/problems-report.html
-RESPONSE_TO_DEVELOPER.md

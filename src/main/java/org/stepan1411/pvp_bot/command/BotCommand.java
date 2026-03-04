@@ -724,6 +724,26 @@ public class BotCommand {
                             )
                         )
                     )
+                    // /pvpbot faction startpath <faction> <path> - запустить путь для всей фракции
+                    .then(CommandManager.literal("startpath")
+                        .then(CommandManager.argument("faction", StringArgumentType.word())
+                            .suggests(FACTION_SUGGESTIONS)
+                            .then(CommandManager.argument("path", StringArgumentType.word())
+                                .suggests(PATH_SUGGESTIONS)
+                                .executes(ctx -> factionStartPath(ctx.getSource(), 
+                                    StringArgumentType.getString(ctx, "faction"),
+                                    StringArgumentType.getString(ctx, "path")))
+                            )
+                        )
+                    )
+                    // /pvpbot faction stoppath <faction> - остановить путь для всей фракции
+                    .then(CommandManager.literal("stoppath")
+                        .then(CommandManager.argument("faction", StringArgumentType.word())
+                            .suggests(FACTION_SUGGESTIONS)
+                            .executes(ctx -> factionStopPath(ctx.getSource(), 
+                                StringArgumentType.getString(ctx, "faction")))
+                        )
+                    )
                 )
                 
                 // /pvpbot settings viewdistance [5-128] - РґР°Р»СЊРЅРѕСЃС‚СЊ РІРёРґРёРјРѕСЃС‚Рё
@@ -874,6 +894,29 @@ public class BotCommand {
                         .then(CommandManager.argument("name", StringArgumentType.word())
                             .suggests(PATH_SUGGESTIONS)
                             .executes(ctx -> pathInfo(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                        )
+                    )
+                    // /pvpbot path distribute <path> - распределить ботов по пути
+                    .then(CommandManager.literal("distribute")
+                        .then(CommandManager.argument("path", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
+                            .executes(ctx -> distributeBotsOnPath(ctx.getSource(), StringArgumentType.getString(ctx, "path")))
+                        )
+                    )
+                    // /pvpbot path startnear <path> <radius> - запустить путь для ботов в радиусе
+                    .then(CommandManager.literal("startnear")
+                        .then(CommandManager.argument("path", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
+                            .then(CommandManager.argument("radius", DoubleArgumentType.doubleArg(1.0))
+                                .executes(ctx -> startPathNear(ctx.getSource(), StringArgumentType.getString(ctx, "path"), DoubleArgumentType.getDouble(ctx, "radius")))
+                            )
+                        )
+                    )
+                    // /pvpbot path stopall <path> - остановить всех ботов на пути
+                    .then(CommandManager.literal("stopall")
+                        .then(CommandManager.argument("path", StringArgumentType.word())
+                            .suggests(PATH_SUGGESTIONS)
+                            .executes(ctx -> stopAllOnPath(ctx.getSource(), StringArgumentType.getString(ctx, "path")))
                         )
                     )
                 )
@@ -1789,6 +1832,186 @@ public class BotCommand {
             return 1;
         } else {
             source.sendError(Text.literal("§cPath '" + name + "' not found"));
+            return 0;
+        }
+    }
+    
+    // ========== NEW PATH COMMANDS ==========
+    
+    private static int distributeBotsOnPath(ServerCommandSource source, String pathName) {
+        var path = BotPath.getPath(pathName);
+        if (path == null) {
+            source.sendError(Text.literal("§cPath '" + pathName + "' not found"));
+            return 0;
+        }
+        
+        if (path.points.isEmpty()) {
+            source.sendError(Text.literal("§cPath '" + pathName + "' has no points"));
+            return 0;
+        }
+        
+        // Get all bots following this path
+        var server = source.getServer();
+        var botsOnPath = new java.util.ArrayList<String>();
+        for (String botName : BotManager.getAllBots()) {
+            if (BotPath.isFollowing(botName, pathName)) {
+                botsOnPath.add(botName);
+            }
+        }
+        
+        if (botsOnPath.isEmpty()) {
+            source.sendError(Text.literal("§cNo bots are following path '" + pathName + "'"));
+            return 0;
+        }
+        
+        // Distribute bots evenly along the path
+        int totalPoints = path.points.size();
+        int botCount = botsOnPath.size();
+        
+        for (int i = 0; i < botCount; i++) {
+            String botName = botsOnPath.get(i);
+            int pointIndex = (i * totalPoints) / botCount;
+            
+            // Set bot's current point on path
+            BotPath.setBotPathIndex(botName, pointIndex);
+            
+            // Teleport bot to that point (1 block above to avoid getting stuck)
+            var point = path.points.get(pointIndex);
+            try {
+                String tpCommand = String.format(java.util.Locale.US,
+                    "tp %s %.2f %.2f %.2f",
+                    botName, point.x, point.y + 1.0, point.z
+                );
+                server.getCommandManager().getDispatcher().execute(tpCommand, server.getCommandSource());
+            } catch (Exception e) {
+                // Ignore teleport errors
+            }
+        }
+        
+        source.sendFeedback(() -> Text.literal("§aDistributed " + botCount + " bots along path '" + pathName + "'"), true);
+        return botCount;
+    }
+    
+    private static int startPathNear(ServerCommandSource source, String pathName, double radius) {
+        var path = BotPath.getPath(pathName);
+        if (path == null) {
+            source.sendError(Text.literal("§cPath '" + pathName + "' not found"));
+            return 0;
+        }
+        
+        ServerPlayerEntity player = source.getPlayer();
+        if (player == null) {
+            source.sendError(Text.literal("§cThis command can only be used by a player"));
+            return 0;
+        }
+        
+        var server = source.getServer();
+        int started = 0;
+        
+        for (String botName : BotManager.getAllBots()) {
+            ServerPlayerEntity bot = server.getPlayerManager().getPlayer(botName);
+            if (bot != null) {
+                double distance = bot.distanceTo(player);
+                if (distance <= radius) {
+                    if (BotPath.startFollowing(botName, pathName)) {
+                        started++;
+                    }
+                }
+            }
+        }
+        
+        if (started > 0) {
+            int finalStarted = started;
+            source.sendFeedback(() -> Text.literal("§aStarted path '" + pathName + "' for " + finalStarted + " bots within " + radius + " blocks"), true);
+            return started;
+        } else {
+            source.sendError(Text.literal("§cNo bots found within " + radius + " blocks"));
+            return 0;
+        }
+    }
+    
+    private static int stopAllOnPath(ServerCommandSource source, String pathName) {
+        var path = BotPath.getPath(pathName);
+        if (path == null) {
+            source.sendError(Text.literal("§cPath '" + pathName + "' not found"));
+            return 0;
+        }
+        
+        int stopped = 0;
+        for (String botName : BotManager.getAllBots()) {
+            if (BotPath.isFollowing(botName, pathName)) {
+                if (BotPath.stopFollowing(botName)) {
+                    stopped++;
+                }
+            }
+        }
+        
+        if (stopped > 0) {
+            int finalStopped = stopped;
+            source.sendFeedback(() -> Text.literal("§aStopped " + finalStopped + " bots on path '" + pathName + "'"), true);
+            return stopped;
+        } else {
+            source.sendError(Text.literal("§cNo bots are following path '" + pathName + "'"));
+            return 0;
+        }
+    }
+    
+    // ========== FACTION PATH COMMANDS ==========
+    
+    private static int factionStartPath(ServerCommandSource source, String factionName, String pathName) {
+        var members = BotFaction.getMembers(factionName);
+        if (members.isEmpty()) {
+            source.sendError(Text.literal("§cFaction '" + factionName + "' not found or has no members"));
+            return 0;
+        }
+        
+        var path = BotPath.getPath(pathName);
+        if (path == null) {
+            source.sendError(Text.literal("§cPath '" + pathName + "' not found"));
+            return 0;
+        }
+        
+        int started = 0;
+        for (String member : members) {
+            if (BotManager.getAllBots().contains(member)) {
+                if (BotPath.startFollowing(member, pathName)) {
+                    started++;
+                }
+            }
+        }
+        
+        if (started > 0) {
+            int finalStarted = started;
+            source.sendFeedback(() -> Text.literal("§aStarted path '" + pathName + "' for " + finalStarted + " bots in faction '" + factionName + "'"), true);
+            return started;
+        } else {
+            source.sendError(Text.literal("§cNo bots in faction '" + factionName + "'"));
+            return 0;
+        }
+    }
+    
+    private static int factionStopPath(ServerCommandSource source, String factionName) {
+        var members = BotFaction.getMembers(factionName);
+        if (members.isEmpty()) {
+            source.sendError(Text.literal("§cFaction '" + factionName + "' not found or has no members"));
+            return 0;
+        }
+        
+        int stopped = 0;
+        for (String member : members) {
+            if (BotManager.getAllBots().contains(member)) {
+                if (BotPath.stopFollowing(member)) {
+                    stopped++;
+                }
+            }
+        }
+        
+        if (stopped > 0) {
+            int finalStopped = stopped;
+            source.sendFeedback(() -> Text.literal("§aStopped path for " + finalStopped + " bots in faction '" + factionName + "'"), true);
+            return stopped;
+        } else {
+            source.sendError(Text.literal("§cNo bots in faction '" + factionName + "' were following a path"));
             return 0;
         }
     }

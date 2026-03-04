@@ -232,6 +232,32 @@ public class BotPath {
     }
     
     /**
+     * Check if bot is following specific path
+     */
+    public static boolean isFollowing(String botName, String pathName) {
+        PathFollower follower = followers.get(botName);
+        return follower != null && follower.pathName.equals(pathName);
+    }
+    
+    /**
+     * Set bot's current index on path (for distribution)
+     */
+    public static boolean setBotPathIndex(String botName, int index) {
+        PathFollower follower = followers.get(botName);
+        if (follower == null) {
+            return false;
+        }
+        
+        PathData path = paths.get(follower.pathName);
+        if (path == null || index < 0 || index >= path.points.size()) {
+            return false;
+        }
+        
+        follower.currentPoint = index;
+        return true;
+    }
+    
+    /**
      * Получить путь по имени
      */
     public static PathData getPath(String name) {

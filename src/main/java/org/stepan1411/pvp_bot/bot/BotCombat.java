@@ -571,6 +571,7 @@ public class BotCombat {
         System.out.println("[COMBAT] " + bot.getName().getString() + " handleMeleeCombat - target: " + target.getName().getString() + ", distance: " + String.format("%.2f", distance));
         
         var utilsState = BotUtils.getState(bot.getName().getString());
+        
         if (utilsState.isEating) {
             System.out.println("[COMBAT] " + bot.getName().getString() + " is eating, skipping combat");
             return;

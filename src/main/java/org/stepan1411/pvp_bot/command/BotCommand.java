@@ -1178,7 +1178,11 @@ public class BotCommand {
         } catch (ReflectiveOperationException ignored) {
         }
 
-        throw new IllegalStateException("Unsupported command source stack implementation: " + source.getClass().getName());
+        throw new IllegalStateException(
+            "Failed to convert Paper CommandSourceStack to vanilla CommandSourceStack. Unsupported implementation: "
+                + source.getClass().getName()
+                + ". Expected direct CommandSourceStack instance or getHandle() returning one."
+        );
     }
 
     private static void sendSuccess(CommandSourceStack source, Component message) {

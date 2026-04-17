@@ -1169,19 +1169,22 @@ public class BotCommand {
             return vanillaSource;
         }
 
+        ReflectiveOperationException conversionError = null;
         try {
             Method getHandleMethod = source.getClass().getMethod("getHandle");
             Object handle = getHandleMethod.invoke(source);
             if (handle instanceof CommandSourceStack vanillaSource) {
                 return vanillaSource;
             }
-        } catch (ReflectiveOperationException ignored) {
+        } catch (ReflectiveOperationException ex) {
+            conversionError = ex;
         }
 
         throw new IllegalStateException(
             "Failed to convert Paper CommandSourceStack to vanilla CommandSourceStack. Unsupported implementation: "
                 + source.getClass().getName()
                 + ". Expected direct CommandSourceStack instance or getHandle() returning one."
+            , conversionError
         );
     }
 

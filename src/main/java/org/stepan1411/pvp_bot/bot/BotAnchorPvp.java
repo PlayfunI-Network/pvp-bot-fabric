@@ -1,17 +1,17 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.RespawnAnchorBlock;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.RespawnAnchorBlock;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 
 public class BotAnchorPvp {
@@ -38,11 +38,11 @@ public class BotAnchorPvp {
     }
     
     
-    public static boolean canUseAnchorPvp(ServerPlayerEntity bot, Entity target, BotSettings settings) {
+    public static boolean canUseAnchorPvp(ServerPlayer bot, Entity target, BotSettings settings) {
         if (!settings.isAnchorPvpEnabled()) return false;
         
 
-        String dimension = bot.getEntityWorld().getRegistryKey().getValue().toString();
+        String dimension = bot.level().dimension().location().toString();
         if (dimension.contains("nether")) return false;
         
         double distance = bot.distanceTo(target);
@@ -52,14 +52,14 @@ public class BotAnchorPvp {
         double healthPercent = bot.getHealth() / bot.getMaxHealth();
         if (healthPercent < 0.4) return false;
         
-        PlayerInventory inventory = bot.getInventory();
+        Inventory inventory = bot.getInventory();
         return hasRespawnAnchor(inventory) && hasGlowstone(inventory);
     }
     
     
-    public static boolean doAnchorPvp(ServerPlayerEntity bot, Entity target, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    public static boolean doAnchorPvp(ServerPlayer bot, Entity target, BotSettings settings, net.minecraft.server.MinecraftServer server) {
         AnchorState state = getState(bot.getName().getString());
-        World world = bot.getEntityWorld();
+        Level world = bot.level();
         double distance = bot.distanceTo(target);
         
 
@@ -117,14 +117,14 @@ public class BotAnchorPvp {
     }
     
     
-    private static boolean stepPlaceAnchor(ServerPlayerEntity bot, Entity target, AnchorState state,
-                                          net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepPlaceAnchor(ServerPlayer bot, Entity target, AnchorState state,
+                                          net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         
 
         BlockPos existingAnchor = findExistingAnchor(bot, target, world, 5.0);
         if (existingAnchor != null) {
-            double distToExisting = Math.sqrt(bot.squaredDistanceTo(existingAnchor.getX() + 0.5, existingAnchor.getY() + 0.5, existingAnchor.getZ() + 0.5));
+            double distToExisting = Math.sqrt(bot.distanceToSqr(existingAnchor.getX() + 0.5, existingAnchor.getY() + 0.5, existingAnchor.getZ() + 0.5));
             
             if (distToExisting <= 4.0) {
                 System.out.println("[Anchor PVP] " + bot.getName().getString() + " using existing anchor at " + existingAnchor);
@@ -161,7 +161,7 @@ public class BotAnchorPvp {
         }
         
 
-        double distToPos = Math.sqrt(bot.squaredDistanceTo(anchorPos.getX() + 0.5, anchorPos.getY() + 0.5, anchorPos.getZ() + 0.5));
+        double distToPos = Math.sqrt(bot.distanceToSqr(anchorPos.getX() + 0.5, anchorPos.getY() + 0.5, anchorPos.getZ() + 0.5));
         
         if (distToPos > 3.0) {
             moveToward(bot, target, settings.getMoveSpeed());
@@ -169,7 +169,7 @@ public class BotAnchorPvp {
         }
         
 
-        bot.setVelocity(0, bot.getVelocity().y, 0);
+        bot.setDeltaMovement(0, bot.getDeltaMovement().y, 0);
         
 
         if (!selectItem(bot, anchorSlot)) {
@@ -193,9 +193,9 @@ public class BotAnchorPvp {
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " use once",
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
             
             System.out.println("[Anchor PVP] " + bot.getName().getString() + " placed anchor at " + anchorPos + " (attempt " + state.anchorPlaceAttempts + "/3)");
@@ -214,9 +214,9 @@ public class BotAnchorPvp {
     }
 
     
-    private static boolean stepChargeAnchor(ServerPlayerEntity bot, Entity target, AnchorState state,
-                                           net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepChargeAnchor(ServerPlayer bot, Entity target, AnchorState state,
+                                           net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         
 
         if (state.lastAnchorPos == null) {
@@ -240,7 +240,7 @@ public class BotAnchorPvp {
         }
         
 
-        int charges = blockAtPos.get(RespawnAnchorBlock.CHARGES);
+        int charges = blockAtPos.get(RespawnAnchorBlock.CHARGE);
         
         if (charges >= 1) {
 
@@ -272,7 +272,7 @@ public class BotAnchorPvp {
         }
         
 
-        bot.setVelocity(0, bot.getVelocity().y, 0);
+        bot.setDeltaMovement(0, bot.getDeltaMovement().y, 0);
         
 
         if (!selectItem(bot, glowstoneSlot)) {
@@ -284,9 +284,9 @@ public class BotAnchorPvp {
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " use once",
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
             
             System.out.println("[Anchor PVP] " + bot.getName().getString() + " charged anchor once (charges: " + (charges + 1) + "/4)");
@@ -307,8 +307,8 @@ public class BotAnchorPvp {
     }
     
     
-    private static boolean stepDetonateAnchor(ServerPlayerEntity bot, Entity target, AnchorState state,
-                                             net.minecraft.server.MinecraftServer server, World world,
+    private static boolean stepDetonateAnchor(ServerPlayer bot, Entity target, AnchorState state,
+                                             net.minecraft.server.MinecraftServer server, Level world,
                                              BotSettings settings, double distance) {
         
 
@@ -342,7 +342,7 @@ public class BotAnchorPvp {
         }
         
 
-        int charges = blockAtPos.get(RespawnAnchorBlock.CHARGES);
+        int charges = blockAtPos.get(RespawnAnchorBlock.CHARGE);
         
         if (charges == 0) {
 
@@ -353,14 +353,14 @@ public class BotAnchorPvp {
         }
         
 
-        double distToAnchor = Math.sqrt(bot.squaredDistanceTo(
+        double distToAnchor = Math.sqrt(bot.distanceToSqr(
             state.lastAnchorPos.getX() + 0.5,
             state.lastAnchorPos.getY() + 0.5,
             state.lastAnchorPos.getZ() + 0.5
         ));
         
 
-        double targetDistToAnchor = Math.sqrt(target.squaredDistanceTo(
+        double targetDistToAnchor = Math.sqrt(target.distanceToSqr(
             state.lastAnchorPos.getX() + 0.5,
             state.lastAnchorPos.getY() + 0.5,
             state.lastAnchorPos.getZ() + 0.5
@@ -385,10 +385,10 @@ public class BotAnchorPvp {
         state.anchorPlaceFailCounter = 0;
         
 
-        bot.setVelocity(0, bot.getVelocity().y, 0);
+        bot.setDeltaMovement(0, bot.getDeltaMovement().y, 0);
         
 
-        PlayerInventory inventory = bot.getInventory();
+        Inventory inventory = bot.getInventory();
         int anchorSlot = findRespawnAnchor(inventory);
         if (anchorSlot >= 0) {
             selectItem(bot, anchorSlot);
@@ -405,9 +405,9 @@ public class BotAnchorPvp {
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " use once",
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
             
             System.out.println("[Anchor PVP] " + bot.getName().getString() + " DETONATED anchor! (charges: " + charges + ")");
@@ -428,7 +428,7 @@ public class BotAnchorPvp {
     }
     
     
-    private static void maintainDistance(ServerPlayerEntity bot, Entity target, BotSettings settings) {
+    private static void maintainDistance(ServerPlayer bot, Entity target, BotSettings settings) {
         double distance = bot.distanceTo(target);
         
         if (distance < 3.0) {
@@ -441,33 +441,33 @@ public class BotAnchorPvp {
     }
     
     
-    private static void moveToward(ServerPlayerEntity bot, Entity target, double speed) {
-        Vec3d targetPos = new Vec3d(target.getX(), target.getY(), target.getZ());
-        Vec3d botPos = new Vec3d(bot.getX(), bot.getY(), bot.getZ());
-        Vec3d direction = targetPos.subtract(botPos).normalize();
+    private static void moveToward(ServerPlayer bot, Entity target, double speed) {
+        Vec3 targetPos = new Vec3(target.getX(), target.getY(), target.getZ());
+        Vec3 botPos = new Vec3(bot.getX(), bot.getY(), bot.getZ());
+        Vec3 direction = targetPos.subtract(botPos).normalize();
         
-        bot.setVelocity(direction.x * speed, bot.getVelocity().y, direction.z * speed);
-        bot.velocityDirty = true;
-        
-        lookAtEntity(bot, target);
-    }
-    
-    
-    private static void moveAway(ServerPlayerEntity bot, Entity target, double speed) {
-        Vec3d targetPos = new Vec3d(target.getX(), target.getY(), target.getZ());
-        Vec3d botPos = new Vec3d(bot.getX(), bot.getY(), bot.getZ());
-        Vec3d direction = botPos.subtract(targetPos).normalize();
-        
-        bot.setVelocity(direction.x * speed, bot.getVelocity().y, direction.z * speed);
-        bot.velocityDirty = true;
+        bot.setDeltaMovement(direction.x * speed, bot.getDeltaMovement().y, direction.z * speed);
+        bot.hurtMarked = true;
         
         lookAtEntity(bot, target);
     }
     
     
-    private static void lookAt(ServerPlayerEntity bot, BlockPos pos) {
-        Vec3d target = new Vec3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        Vec3d botPos = bot.getEyePos();
+    private static void moveAway(ServerPlayer bot, Entity target, double speed) {
+        Vec3 targetPos = new Vec3(target.getX(), target.getY(), target.getZ());
+        Vec3 botPos = new Vec3(bot.getX(), bot.getY(), bot.getZ());
+        Vec3 direction = botPos.subtract(targetPos).normalize();
+        
+        bot.setDeltaMovement(direction.x * speed, bot.getDeltaMovement().y, direction.z * speed);
+        bot.hurtMarked = true;
+        
+        lookAtEntity(bot, target);
+    }
+    
+    
+    private static void lookAt(ServerPlayer bot, BlockPos pos) {
+        Vec3 target = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        Vec3 botPos = bot.getEyePosition();
         
         double dx = target.x - botPos.x;
         double dy = target.y - botPos.y;
@@ -477,15 +477,15 @@ public class BotAnchorPvp {
         float yaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
         float pitch = (float) -(Math.atan2(dy, horizontalDist) * (180.0 / Math.PI));
         
-        bot.setYaw(yaw);
-        bot.setPitch(pitch);
-        bot.setHeadYaw(yaw);
+        bot.setYRot(yaw);
+        bot.setXRot(pitch);
+        bot.setYHeadRot(yaw);
     }
     
     
-    private static void lookAtEntity(ServerPlayerEntity bot, Entity target) {
-        Vec3d targetPos = target.getEyePos();
-        Vec3d botPos = bot.getEyePos();
+    private static void lookAtEntity(ServerPlayer bot, Entity target) {
+        Vec3 targetPos = target.getEyePosition();
+        Vec3 botPos = bot.getEyePosition();
         
         double dx = targetPos.x - botPos.x;
         double dy = targetPos.y - botPos.y;
@@ -495,21 +495,21 @@ public class BotAnchorPvp {
         float yaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
         float pitch = (float) -(Math.atan2(dy, horizontalDist) * (180.0 / Math.PI));
         
-        bot.setYaw(yaw);
-        bot.setPitch(pitch);
-        bot.setHeadYaw(yaw);
+        bot.setYRot(yaw);
+        bot.setXRot(pitch);
+        bot.setYHeadRot(yaw);
     }
     
     
-    private static boolean selectItem(ServerPlayerEntity bot, int slot) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean selectItem(ServerPlayer bot, int slot) {
+        Inventory inventory = bot.getInventory();
         
 
         if (slot >= 9) {
-            ItemStack item = inventory.getStack(slot);
-            ItemStack current = inventory.getStack(0);
-            inventory.setStack(slot, current);
-            inventory.setStack(0, item);
+            ItemStack item = inventory.getItem(slot);
+            ItemStack current = inventory.getItem(0);
+            inventory.setItem(slot, current);
+            inventory.setItem(0, item);
             slot = 0;
         }
         
@@ -519,8 +519,8 @@ public class BotAnchorPvp {
     }
     
     
-    private static BlockPos findExistingAnchor(ServerPlayerEntity bot, Entity target, World world, double maxDistance) {
-        BlockPos targetPos = target.getBlockPos();
+    private static BlockPos findExistingAnchor(ServerPlayer bot, Entity target, Level world, double maxDistance) {
+        BlockPos targetPos = target.blockPosition();
         
         int radius = (int) Math.ceil(maxDistance);
         
@@ -529,13 +529,13 @@ public class BotAnchorPvp {
                 for (int dz = -radius; dz <= radius; dz++) {
                     BlockPos pos = targetPos.add(dx, dy, dz);
                     
-                    double distFromTarget = Math.sqrt(target.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+                    double distFromTarget = Math.sqrt(target.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
                     if (distFromTarget > maxDistance) continue;
                     
                     BlockState blockState = world.getBlockState(pos);
                     if (!(blockState.getBlock() instanceof RespawnAnchorBlock)) continue;
                     
-                    double distFromBot = Math.sqrt(bot.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+                    double distFromBot = Math.sqrt(bot.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
                     if (distFromBot > 4.0) continue;
                     
                     System.out.println("[Anchor PVP] Found suitable anchor at " + pos + ", distance from enemy: " + String.format("%.2f", distFromTarget) + ", from bot: " + String.format("%.2f", distFromBot));
@@ -548,8 +548,8 @@ public class BotAnchorPvp {
     }
     
     
-    private static BlockPos findBestAnchorPosition(ServerPlayerEntity bot, Entity target, World world, java.util.Set<BlockPos> triedPositions) {
-        BlockPos targetPos = target.getBlockPos();
+    private static BlockPos findBestAnchorPosition(ServerPlayer bot, Entity target, Level world, java.util.Set<BlockPos> triedPositions) {
+        BlockPos targetPos = target.blockPosition();
         
         BlockPos[] candidates = {
             targetPos.north(),
@@ -567,7 +567,7 @@ public class BotAnchorPvp {
             
             if (!world.getBlockState(pos).isAir() && !world.getBlockState(pos).isReplaceable()) continue;
             
-            double dist = Math.sqrt(bot.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+            double dist = Math.sqrt(bot.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
             
             if (dist <= 4.0) {
                 System.out.println("[Anchor PVP] Found suitable position: " + pos);
@@ -580,30 +580,30 @@ public class BotAnchorPvp {
     }
     
     
-    private static int findRespawnAnchor(PlayerInventory inventory) {
+    private static int findRespawnAnchor(Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.RESPAWN_ANCHOR) return i;
         }
         return -1;
     }
     
     
-    private static int findGlowstone(PlayerInventory inventory) {
+    private static int findGlowstone(Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.GLOWSTONE) return i;
         }
         return -1;
     }
     
     
-    private static int findMeleeWeapon(PlayerInventory inventory) {
+    private static int findMeleeWeapon(Inventory inventory) {
         int bestSlot = -1;
         int bestPriority = -1;
         
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             int priority = -1;
             
             if (stack.getItem().toString().contains("sword")) {
@@ -622,12 +622,12 @@ public class BotAnchorPvp {
     }
     
     
-    private static boolean hasRespawnAnchor(PlayerInventory inventory) {
+    private static boolean hasRespawnAnchor(Inventory inventory) {
         return findRespawnAnchor(inventory) >= 0;
     }
     
     
-    private static boolean hasGlowstone(PlayerInventory inventory) {
+    private static boolean hasGlowstone(Inventory inventory) {
         return findGlowstone(inventory) >= 0;
     }
     

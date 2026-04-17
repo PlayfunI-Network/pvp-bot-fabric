@@ -1,17 +1,17 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.mob.HostileEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.PersistentProjectileEntity;
-import net.minecraft.item.*;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.item.*;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
 
@@ -51,7 +51,7 @@ public class BotCombat {
 
         public boolean isCrystalPvping = false;
         public int crystalCooldown = 0;
-        public net.minecraft.util.math.BlockPos lastObsidianPos = null;
+        public net.minecraft.core.BlockPos lastObsidianPos = null;
         public int crystalPvpStep = 0;
         public int crystalPvpTicks = 0;
         
@@ -79,7 +79,7 @@ public class BotCombat {
     }
     
     
-    public static void update(ServerPlayerEntity bot, net.minecraft.server.MinecraftServer server) {
+    public static void update(ServerPlayer bot, net.minecraft.server.MinecraftServer server) {
         BotSettings settings = BotSettings.get();
         if (!settings.isCombatEnabled()) return;
         
@@ -89,7 +89,7 @@ public class BotCombat {
         float currentHealth = bot.getHealth();
         if (currentHealth < state.lastHealth && settings.isRevengeEnabled()) {
 
-            Entity attacker = bot.getAttacker();
+            Entity attacker = bot.getLastHurtByMob();
             if (attacker != null && attacker != bot && attacker instanceof LivingEntity) {
                 state.lastAttacker = attacker;
                 state.lastAttackTime = System.currentTimeMillis();
@@ -213,14 +213,14 @@ public class BotCombat {
             if (settings.isAutoShieldEnabled()) {
                 var inventory = bot.getInventory();
 
-                ItemStack offhandItem = bot.getOffHandStack();
+                ItemStack offhandItem = bot.getOffhandItem();
                 if (offhandItem.isEmpty() || !offhandItem.getItem().toString().contains("shield")) {
                     int shieldSlot = findShield(inventory);
                     if (shieldSlot >= 0) {
 
-                        ItemStack shield = inventory.getStack(shieldSlot);
-                        inventory.setStack(40, shield);
-                        inventory.setStack(shieldSlot, ItemStack.EMPTY);
+                        ItemStack shield = inventory.getItem(shieldSlot);
+                        inventory.setItem(40, shield);
+                        inventory.setItem(shieldSlot, ItemStack.EMPTY);
                     }
                 }
                 
@@ -274,7 +274,7 @@ public class BotCombat {
         
         if (shouldLookAt && settings.isUseBaritone()) {
 
-            var mainHandStack = bot.getMainHandStack();
+            var mainHandStack = bot.getMainHandItem();
             boolean usingMace = mainHandStack.getItem().toString().toLowerCase().contains("mace");
             
             if (usingMace) {
@@ -342,7 +342,7 @@ public class BotCombat {
     }
     
     
-    private static Entity findTarget(ServerPlayerEntity bot, CombatState state, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    private static Entity findTarget(ServerPlayer bot, CombatState state, BotSettings settings, net.minecraft.server.MinecraftServer server) {
 
         if (state.forcedTargetName != null) {
             Entity forced = findEntityByName(bot, state.forcedTargetName, server);
@@ -361,7 +361,7 @@ public class BotCombat {
 
             if (!state.lastAttacker.isRemoved() && state.lastAttacker.isAlive()) {
 
-                if (!settings.isFriendlyFireEnabled() && state.lastAttacker instanceof PlayerEntity) {
+                if (!settings.isFriendlyFireEnabled() && state.lastAttacker instanceof Player) {
                     String attackerName = state.lastAttacker.getName().getString();
                     if (BotFaction.areAllies(bot.getName().getString(), attackerName)) {
                         state.lastAttacker = null;
@@ -403,7 +403,7 @@ public class BotCombat {
     }
     
     
-    private static Entity findFactionEnemy(ServerPlayerEntity bot, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    private static Entity findFactionEnemy(ServerPlayer bot, BotSettings settings, net.minecraft.server.MinecraftServer server) {
         String botName = bot.getName().getString();
         String botFaction = BotFaction.getFaction(botName);
         
@@ -415,7 +415,7 @@ public class BotCombat {
         double nearestDist = maxDist + 1;
         
         if (server != null) {
-            for (var player : server.getPlayerManager().getPlayerList()) {
+            for (var player : server.getPlayerList().getPlayers()) {
                 if (player == bot) continue;
                 if (!player.isAlive()) continue;
                 if (player.isSpectator() || player.isCreative()) continue;
@@ -436,17 +436,17 @@ public class BotCombat {
         return nearest;
     }
     
-    private static Entity findEntityByName(ServerPlayerEntity bot, String name, net.minecraft.server.MinecraftServer server) {
+    private static Entity findEntityByName(ServerPlayer bot, String name, net.minecraft.server.MinecraftServer server) {
 
         if (server != null) {
-            var player = server.getPlayerManager().getPlayer(name);
+            var player = server.getPlayerList().getPlayerByName(name);
             if (player != null && player != bot) return player;
         }
         
 
         if (server != null) {
-            for (var world : server.getWorlds()) {
-                for (Entity entity : world.iterateEntities()) {
+            for (var world : server.getAllLevels()) {
+                for (Entity entity : level.getAllEntities()) {
                     if (entity.getName().getString().equalsIgnoreCase(name) && entity != bot) {
                         return entity;
                     }
@@ -456,17 +456,17 @@ public class BotCombat {
         return null;
     }
     
-    private static Entity findNearestEnemy(ServerPlayerEntity bot, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    private static Entity findNearestEnemy(ServerPlayer bot, BotSettings settings, net.minecraft.server.MinecraftServer server) {
         double maxDist = settings.getMaxTargetDistance();
-        Box searchBox = bot.getBoundingBox().expand(maxDist);
+        Box searchBox = bot.getBoundingAABB().expand(maxDist);
         
         Entity nearest = null;
         double nearestDist = maxDist + 1;
         
 
         if (server != null) {
-            for (var world : server.getWorlds()) {
-                for (Entity entity : world.getOtherEntities(bot, searchBox)) {
+            for (var world : server.getAllLevels()) {
+                for (Entity entity : level.getEntities(bot, searchBox)) {
                     if (!isValidTarget(bot, entity, settings)) continue;
                     
                     double dist = bot.distanceTo(entity);
@@ -481,7 +481,7 @@ public class BotCombat {
         return nearest;
     }
     
-    private static boolean isValidTarget(ServerPlayerEntity bot, Entity entity, BotSettings settings) {
+    private static boolean isValidTarget(ServerPlayer bot, Entity entity, BotSettings settings) {
         if (entity == bot) return false;
         if (!entity.isAlive()) return false;
         if (!(entity instanceof LivingEntity living)) return false;
@@ -489,7 +489,7 @@ public class BotCombat {
         String botName = bot.getName().getString();
         
 
-        if (entity instanceof PlayerEntity player) {
+        if (entity instanceof Player player) {
             if (player.isSpectator() || player.isCreative()) return false;
             
             String targetName = player.getName().getString();
@@ -517,12 +517,12 @@ public class BotCombat {
         }
         
 
-        if (entity instanceof HostileEntity) {
+        if (entity instanceof Monster) {
             return settings.isTargetHostileMobs();
         }
         
 
-        if (living instanceof net.minecraft.entity.mob.MobEntity) {
+        if (living instanceof net.minecraft.world.entity.Mob) {
             return settings.isTargetHostileMobs();
         }
         
@@ -531,7 +531,7 @@ public class BotCombat {
 
     
     
-    private static void selectWeaponMode(ServerPlayerEntity bot, CombatState state, double distance, BotSettings settings) {
+    private static void selectWeaponMode(ServerPlayer bot, CombatState state, double distance, BotSettings settings) {
         var inventory = bot.getInventory();
         Entity target = state.target;
         
@@ -571,11 +571,11 @@ public class BotCombat {
     
     
     private static boolean isTargetMaceAttacking(Entity target) {
-        if (!(target instanceof PlayerEntity player)) return false;
+        if (!(target instanceof Player player)) return false;
         
 
-        ItemStack mainHand = player.getMainHandStack();
-        boolean hasMace = mainHand.getItem() == Items.MACE;
+        ItemStack mainHand = player.getMainHandItem();
+        boolean hasMace = mainInteractionHand.getItem() == Items.MACE;
         
         if (!hasMace) return false;
         
@@ -584,7 +584,7 @@ public class BotCombat {
         if (!inAir) return false;
         
 
-        double velocityY = player.getVelocity().y;
+        double velocityY = player.getDeltaMovement().y;
         
 
 
@@ -599,7 +599,7 @@ public class BotCombat {
     }
     
     
-    private static void handleMaceDefense(ServerPlayerEntity bot, Entity target, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    private static void handleMaceDefense(ServerPlayer bot, Entity target, BotSettings settings, net.minecraft.server.MinecraftServer server) {
         if (!settings.isShieldMace()) {
             return;
         }
@@ -629,9 +629,9 @@ public class BotCombat {
 
             if (combatState.isUsingShield && combatState.isMaceDefending) {
                 try {
-                    server.getCommandManager().getDispatcher().execute(
+                    server.getCommands().getDispatcher().execute(
                         "player " + bot.getName().getString() + " stop", 
-                        server.getCommandSource()
+                        server.getSharedSuggestionProvider()
                     );
                     System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " stopped defending (cooldown expired)");
                 } catch (Exception e) {
@@ -651,7 +651,7 @@ public class BotCombat {
         }
         
 
-        ItemStack offhand = inventory.getStack(40);
+        ItemStack offhand = inventory.getItem(40);
         boolean hasTotem = offhand.getItem() == Items.TOTEM_OF_UNDYING;
         
         if (hasTotem && !settings.isPreferShieldMace()) {
@@ -663,10 +663,10 @@ public class BotCombat {
         if (settings.isShieldMainHand() && hasTotem) {
 
             if (shieldSlot != 0) {
-                ItemStack shield = inventory.getStack(shieldSlot);
-                ItemStack current = inventory.getStack(0);
-                inventory.setStack(shieldSlot, current);
-                inventory.setStack(0, shield);
+                ItemStack shield = inventory.getItem(shieldSlot);
+                ItemStack current = inventory.getItem(0);
+                inventory.setItem(shieldSlot, current);
+                inventory.setItem(0, shield);
                 shieldSlot = 0;
                 System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " moved shield to main hand (slot 0)");
             }
@@ -677,36 +677,36 @@ public class BotCombat {
 
             if (!combatState.isUsingShield) {
                 try {
-                    server.getCommandManager().getDispatcher().execute(
+                    server.getCommands().getDispatcher().execute(
                         "player " + bot.getName().getString() + " use continuous", 
-                        server.getCommandSource()
+                        server.getSharedSuggestionProvider()
                     );
                     System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " activating shield in main hand");
                 } catch (Exception e) {
-                    bot.setCurrentHand(Hand.MAIN_HAND);
+                    bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
                 }
                 combatState.isUsingShield = true;
             }
         } else {
 
             if (shieldSlot != 40) {
-                ItemStack shield = inventory.getStack(shieldSlot);
-                ItemStack current = inventory.getStack(40);
-                inventory.setStack(shieldSlot, current);
-                inventory.setStack(40, shield);
+                ItemStack shield = inventory.getItem(shieldSlot);
+                ItemStack current = inventory.getItem(40);
+                inventory.setItem(shieldSlot, current);
+                inventory.setItem(40, shield);
                 System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " moved shield to offhand");
             }
             
 
             if (!combatState.isUsingShield) {
                 try {
-                    server.getCommandManager().getDispatcher().execute(
+                    server.getCommands().getDispatcher().execute(
                         "player " + bot.getName().getString() + " use continuous", 
-                        server.getCommandSource()
+                        server.getSharedSuggestionProvider()
                     );
                     System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " activating shield in offhand");
                 } catch (Exception e) {
-                    bot.setCurrentHand(Hand.OFF_HAND);
+                    bot.setCurrentHand(InteractionInteractionHand.OFF_HAND);
                 }
                 combatState.isUsingShield = true;
             }
@@ -714,7 +714,7 @@ public class BotCombat {
     }
     
     
-    private static void handleMeleeCombat(ServerPlayerEntity bot, Entity target, CombatState state, double distance, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    private static void handleMeleeCombat(ServerPlayer bot, Entity target, CombatState state, double distance, BotSettings settings, net.minecraft.server.MinecraftServer server) {
         var utilsState = BotUtils.getState(bot.getName().getString());
         
 
@@ -741,8 +741,8 @@ public class BotCombat {
 
         if (settings.isCobwebEnabled() && distance < 6.0 && distance > 2.0 && state.cobwebCooldown <= 0 && !state.isPlacingCobweb) {
 
-            if (target instanceof net.minecraft.entity.LivingEntity living) {
-                Vec3d targetVel = living.getVelocity();
+            if (target instanceof net.minecraft.world.entity.LivingEntity living) {
+                Vec3 targetVel = living.getVelocity();
                 double targetSpeed = Math.sqrt(targetVel.x * targetVel.x + targetVel.z * targetVel.z);
                 if (targetSpeed > 0.08) {
                     tryPlaceCobweb(bot, target, server);
@@ -769,14 +769,14 @@ public class BotCombat {
         
         if (shouldUseShield) {
 
-            ItemStack offhandItem = bot.getOffHandStack();
+            ItemStack offhandItem = bot.getOffhandItem();
             if (offhandItem.isEmpty() || !offhandItem.getItem().toString().contains("shield")) {
                 int shieldSlot = findShield(inventory);
                 if (shieldSlot >= 0) {
 
-                    ItemStack shield = inventory.getStack(shieldSlot);
-                    inventory.setStack(40, shield);
-                    inventory.setStack(shieldSlot, ItemStack.EMPTY);
+                    ItemStack shield = inventory.getItem(shieldSlot);
+                    inventory.setItem(40, shield);
+                    inventory.setItem(shieldSlot, ItemStack.EMPTY);
                 }
             }
             
@@ -802,21 +802,21 @@ public class BotCombat {
         if (distance <= meleeRange && state.attackCooldown <= 0) {
             
 
-            if (bot.getAttackCooldownProgress(0.5f) < 1.0f) {
+            if (bot.getAttackStrengthScale(0.5f) < 1.0f) {
                 return;
             }
             
 
-            if (settings.isShieldBreakEnabled() && target instanceof PlayerEntity player && player.isBlocking()) {
+            if (settings.isShieldBreakEnabled() && target instanceof Player player && player.isBlocking()) {
 
                 int axeSlot = findAxe(inventory);
                 if (axeSlot >= 0) {
 
                     if (axeSlot >= 9) {
-                        ItemStack axe = inventory.getStack(axeSlot);
-                        ItemStack current = inventory.getStack(0);
-                        inventory.setStack(axeSlot, current);
-                        inventory.setStack(0, axe);
+                        ItemStack axe = inventory.getItem(axeSlot);
+                        ItemStack current = inventory.getItem(0);
+                        inventory.setItem(axeSlot, current);
+                        inventory.setItem(0, axe);
                         axeSlot = 0;
                     }
                     org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(inventory, axeSlot);
@@ -840,13 +840,13 @@ public class BotCombat {
             
 
             int currentSlot = org.stepan1411.pvp_bot.utils.InventoryHelper.getSelectedSlot(inventory);
-            ItemStack currentItem = inventory.getStack(currentSlot);
+            ItemStack currentItem = inventory.getItem(currentSlot);
             double currentScore = getMeleeScore(currentItem.getItem(), settings.isPreferSword());
             
             int weaponSlot = findMeleeWeapon(inventory);
             if (weaponSlot >= 0 && weaponSlot < 9) {
 
-                ItemStack newWeapon = inventory.getStack(weaponSlot);
+                ItemStack newWeapon = inventory.getItem(weaponSlot);
                 double newScore = getMeleeScore(newWeapon.getItem(), settings.isPreferSword());
                 
                 if (newScore > currentScore || currentScore == 0) {
@@ -860,7 +860,7 @@ public class BotCombat {
                     bot.jump();
                     return;
                 } else {
-                    double velocityY = bot.getVelocity().y;
+                    double velocityY = bot.getDeltaMovement().y;
                     
 
                     if (velocityY < 0) {
@@ -879,13 +879,13 @@ public class BotCombat {
         } else {
 
             int currentSlot = org.stepan1411.pvp_bot.utils.InventoryHelper.getSelectedSlot(inventory);
-            ItemStack currentItem = inventory.getStack(currentSlot);
+            ItemStack currentItem = inventory.getItem(currentSlot);
             double currentScore = getMeleeScore(currentItem.getItem(), settings.isPreferSword());
             
             int weaponSlot = findMeleeWeapon(inventory);
             if (weaponSlot >= 0 && weaponSlot < 9) {
 
-                ItemStack newWeapon = inventory.getStack(weaponSlot);
+                ItemStack newWeapon = inventory.getItem(weaponSlot);
                 double newScore = getMeleeScore(newWeapon.getItem(), settings.isPreferSword());
                 
                 if (newScore > currentScore || currentScore == 0) {
@@ -896,7 +896,7 @@ public class BotCombat {
     }
     
     
-    private static void handleRangedCombat(ServerPlayerEntity bot, Entity target, CombatState state, double distance, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    private static void handleRangedCombat(ServerPlayer bot, Entity target, CombatState state, double distance, BotSettings settings, net.minecraft.server.MinecraftServer server) {
 
 
         if (state.isMaceDefending && state.maceDefenseCooldown > 0) {
@@ -924,7 +924,7 @@ public class BotCombat {
             return;
         }
         
-        ItemStack weapon = bot.getMainHandStack();
+        ItemStack weapon = bot.getMainHandItem();
         boolean isCrossbow = weapon.getItem() instanceof CrossbowItem;
         
         if (isCrossbow) {
@@ -943,7 +943,7 @@ public class BotCombat {
             if (dist > 0) {
                 dx /= dist;
                 dz /= dist;
-                bot.addVelocity(dx * settings.getMoveSpeed() * 0.05, 0, dz * settings.getMoveSpeed() * 0.05);
+                bot.push(dx * settings.getMoveSpeed() * 0.05, 0, dz * settings.getMoveSpeed() * 0.05);
 
             }
         } else if (distance > optimalRange + 10) {
@@ -951,10 +951,10 @@ public class BotCombat {
         }
     }
     
-    private static void handleBowCombat(ServerPlayerEntity bot, Entity target, CombatState state, double distance, BotSettings settings) {
+    private static void handleBowCombat(ServerPlayer bot, Entity target, CombatState state, double distance, BotSettings settings) {
         if (!state.isDrawingBow) {
 
-            bot.setCurrentHand(Hand.MAIN_HAND);
+            bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
             state.isDrawingBow = true;
             state.bowDrawTicks = 0;
         } else {
@@ -972,8 +972,8 @@ public class BotCombat {
         }
     }
     
-    private static void handleCrossbowCombat(ServerPlayerEntity bot, Entity target, CombatState state, double distance, BotSettings settings) {
-        ItemStack crossbow = bot.getMainHandStack();
+    private static void handleCrossbowCombat(ServerPlayer bot, Entity target, CombatState state, double distance, BotSettings settings) {
+        ItemStack crossbow = bot.getMainHandItem();
         
         if (CrossbowItem.isCharged(crossbow)) {
 
@@ -982,7 +982,7 @@ public class BotCombat {
             state.isDrawingBow = false;
         } else if (!state.isDrawingBow) {
 
-            bot.setCurrentHand(Hand.MAIN_HAND);
+            bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
             state.isDrawingBow = true;
             state.bowDrawTicks = 0;
         } else {
@@ -995,7 +995,7 @@ public class BotCombat {
         }
     }
     
-    private static void stopUsingBow(ServerPlayerEntity bot, CombatState state) {
+    private static void stopUsingBow(ServerPlayer bot, CombatState state) {
         if (state.isDrawingBow) {
             bot.stopUsingItem();
             state.isDrawingBow = false;
@@ -1004,7 +1004,7 @@ public class BotCombat {
     }
     
     
-    private static void handleMaceCombat(ServerPlayerEntity bot, Entity target, CombatState state, double distance, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    private static void handleMaceCombat(ServerPlayer bot, Entity target, CombatState state, double distance, BotSettings settings, net.minecraft.server.MinecraftServer server) {
 
 
         if (state.isMaceDefending && state.maceDefenseCooldown > 0) {
@@ -1032,7 +1032,7 @@ public class BotCombat {
             
 
 
-            double verticalSpeed = bot.getVelocity().y;
+            double verticalSpeed = bot.getDeltaMovement().y;
             if (verticalSpeed < 0 && distance <= 5.0 && state.attackCooldown <= 0) {
 
                 attackWithCarpet(bot, target, server);
@@ -1065,7 +1065,7 @@ public class BotCombat {
                     dx /= dist;
                     dz /= dist;
                 }
-                bot.addVelocity(dx * 0.3, 0.3, dz * 0.3);
+                bot.push(dx * 0.3, 0.3, dz * 0.3);
             }
         }
         
@@ -1086,7 +1086,7 @@ public class BotCombat {
     }
     
     
-    private static void handleSpearCombat(ServerPlayerEntity bot, Entity target, CombatState state, double distance, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    private static void handleSpearCombat(ServerPlayer bot, Entity target, CombatState state, double distance, BotSettings settings, net.minecraft.server.MinecraftServer server) {
 
 
         if (state.isMaceDefending && state.maceDefenseCooldown > 0) {
@@ -1134,7 +1134,7 @@ public class BotCombat {
 
             if (!state.isChargingSpear) {
 
-                bot.setCurrentHand(Hand.MAIN_HAND);
+                bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
                 state.isChargingSpear = true;
                 state.spearChargeTicks = 0;
             }
@@ -1172,7 +1172,7 @@ public class BotCombat {
     private static final java.util.Random random = new java.util.Random();
     
     
-    private static void attack(ServerPlayerEntity bot, Entity target) {
+    private static void attack(ServerPlayer bot, Entity target) {
         BotSettings settings = BotSettings.get();
         
 
@@ -1188,39 +1188,39 @@ public class BotCombat {
 
         if (random.nextInt(100) < settings.getMissChance()) {
 
-            bot.swingHand(Hand.MAIN_HAND);
+            bot.swing(InteractionInteractionHand.MAIN_HAND);
             return;
         }
         
         bot.attack(target);
-        bot.swingHand(Hand.MAIN_HAND);
+        bot.swing(InteractionInteractionHand.MAIN_HAND);
     }
     
     
-    private static void attackWithCarpet(ServerPlayerEntity bot, Entity target, net.minecraft.server.MinecraftServer server) {
+    private static void attackWithCarpet(ServerPlayer bot, Entity target, net.minecraft.server.MinecraftServer server) {
         BotSettings settings = BotSettings.get();
         
         var utilsState = BotUtils.getState(bot.getName().getString());
         if (!BotUtils.canAttack(bot, utilsState)) {
             System.out.println("[COMBAT] " + bot.getName().getString() + " cannot attack - cobweb escape active");
-            bot.swingHand(Hand.MAIN_HAND);
+            bot.swing(InteractionInteractionHand.MAIN_HAND);
             return;
         }
 
         boolean cancelled = org.stepan1411.pvp_bot.api.BotAPIIntegration.fireAttackEvent(bot, target);
         if (cancelled) {
             System.out.println("[COMBAT] " + bot.getName().getString() + " attack cancelled by API");
-            bot.swingHand(Hand.MAIN_HAND);
+            bot.swing(InteractionInteractionHand.MAIN_HAND);
             return;
         }
 
 
-        if (!settings.isFriendlyFireEnabled() && target instanceof PlayerEntity) {
+        if (!settings.isFriendlyFireEnabled() && target instanceof Player) {
             String botName = bot.getName().getString();
             String targetName = target.getName().getString();
             if (BotFaction.areAllies(botName, targetName)) {
                 System.out.println("[COMBAT] " + bot.getName().getString() + " skipping ally " + targetName);
-                bot.swingHand(Hand.MAIN_HAND);
+                bot.swing(InteractionInteractionHand.MAIN_HAND);
                 return;
             }
         }
@@ -1228,12 +1228,12 @@ public class BotCombat {
 
         if (random.nextInt(100) < settings.getMissChance()) {
             try {
-                server.getCommandManager().getDispatcher().execute(
+                server.getCommands().getDispatcher().execute(
                     "player " + bot.getName().getString() + " swinghand", 
-                    server.getCommandSource()
+                    server.getSharedSuggestionProvider()
                 );
             } catch (Exception e) {
-                bot.swingHand(Hand.MAIN_HAND);
+                bot.swing(InteractionInteractionHand.MAIN_HAND);
             }
             return;
         }
@@ -1241,39 +1241,39 @@ public class BotCombat {
 
         if (random.nextInt(100) < settings.getMistakeChance()) {
             float yawOffset = (random.nextFloat() - 0.5f) * 60;
-            bot.setYaw(bot.getYaw() + yawOffset);
+            bot.setYRot(bot.getYaw() + yawOffset);
         }
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " attack once", 
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
         } catch (Exception e) {
-            bot.swingHand(Hand.MAIN_HAND);
+            bot.swing(InteractionInteractionHand.MAIN_HAND);
         }
     }
     
     
-    private static void startUsingShield(ServerPlayerEntity bot, net.minecraft.server.MinecraftServer server) {
+    private static void startUsingShield(ServerPlayer bot, net.minecraft.server.MinecraftServer server) {
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " use continuous", 
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
         } catch (Exception e) {
 
-            bot.setCurrentHand(Hand.OFF_HAND);
+            bot.setCurrentHand(InteractionInteractionHand.OFF_HAND);
         }
     }
     
     
-    private static void stopUsingShield(ServerPlayerEntity bot, net.minecraft.server.MinecraftServer server) {
+    private static void stopUsingShield(ServerPlayer bot, net.minecraft.server.MinecraftServer server) {
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " stop", 
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
         } catch (Exception e) {
 
@@ -1282,9 +1282,9 @@ public class BotCombat {
     }
     
     
-    private static void lookAtTarget(ServerPlayerEntity bot, Entity target) {
-        Vec3d targetPos = target.getEyePos();
-        Vec3d botPos = bot.getEyePos();
+    private static void lookAtTarget(ServerPlayer bot, Entity target) {
+        Vec3 targetPos = target.getEyePosition();
+        Vec3 botPos = bot.getEyePosition();
         
         double dx = targetPos.x - botPos.x;
         double dy = targetPos.y - botPos.y;
@@ -1292,18 +1292,18 @@ public class BotCombat {
         
         double horizontalDist = Math.sqrt(dx * dx + dz * dz);
         
-        float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-        float pitch = (float) -(MathHelper.atan2(dy, horizontalDist) * (180.0 / Math.PI));
+        float yaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
+        float pitch = (float) -(Mth.atan2(dy, horizontalDist) * (180.0 / Math.PI));
         
-        bot.setYaw(yaw);
-        bot.setPitch(pitch);
-        bot.setHeadYaw(yaw);
+        bot.setYRot(yaw);
+        bot.setXRot(pitch);
+        bot.setYHeadRot(yaw);
     }
     
     
-    private static void lookAwayFromTarget(ServerPlayerEntity bot, Entity target) {
-        Vec3d targetPos = target.getEyePos();
-        Vec3d botPos = bot.getEyePos();
+    private static void lookAwayFromTarget(ServerPlayer bot, Entity target) {
+        Vec3 targetPos = target.getEyePosition();
+        Vec3 botPos = bot.getEyePosition();
         
 
         double dx = botPos.x - targetPos.x;
@@ -1311,15 +1311,15 @@ public class BotCombat {
         
         double horizontalDist = Math.sqrt(dx * dx + dz * dz);
         
-        float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
+        float yaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
         
-        bot.setYaw(yaw);
-        bot.setPitch(0);
-        bot.setHeadYaw(yaw);
+        bot.setYRot(yaw);
+        bot.setXRot(0);
+        bot.setYHeadRot(yaw);
     }
     
     
-    private static void moveToward(ServerPlayerEntity bot, Entity target, double speed) {
+    private static void moveToward(ServerPlayer bot, Entity target, double speed) {
         double botX = bot.getX(), botY = bot.getY(), botZ = bot.getZ();
         double targetX = target.getX(), targetY = target.getY(), targetZ = target.getZ();
         double dx = targetX - botX;
@@ -1336,12 +1336,12 @@ public class BotCombat {
         
 
         if (bot.isOnGround()) {
-            bot.addVelocity(dx * speed * 0.1, 0, dz * speed * 0.1);
+            bot.push(dx * speed * 0.1, 0, dz * speed * 0.1);
         }
     }
     
     
-    private static void moveAway(ServerPlayerEntity bot, Entity target, double speed) {
+    private static void moveAway(ServerPlayer bot, Entity target, double speed) {
         double botX = bot.getX(), botY = bot.getY(), botZ = bot.getZ();
         double targetX = target.getX(), targetY = target.getY(), targetZ = target.getZ();
         double dx = botX - targetX;
@@ -1357,13 +1357,13 @@ public class BotCombat {
         bot.forwardSpeed = (float) speed;
         
         if (bot.isOnGround()) {
-            bot.addVelocity(dx * speed * 0.1, 0, dz * speed * 0.1);
+            bot.push(dx * speed * 0.1, 0, dz * speed * 0.1);
         }
     }
     
 
     
-    private static int findMeleeWeapon(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findMeleeWeapon(net.minecraft.world.entity.player.Inventory inventory) {
         BotSettings settings = BotSettings.get();
         boolean preferSword = settings.isPreferSword();
         
@@ -1371,7 +1371,7 @@ public class BotCombat {
         double bestScore = 0;
         
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
             
             Item item = stack.getItem();
@@ -1387,12 +1387,12 @@ public class BotCombat {
     }
     
     
-    private static int findAxe(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findAxe(net.minecraft.world.entity.player.Inventory inventory) {
         int bestSlot = -1;
         double bestDamage = 0;
         
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
             
             Item item = stack.getItem();
@@ -1409,13 +1409,13 @@ public class BotCombat {
     }
     
     
-    private static int findShield(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findShield(net.minecraft.world.entity.player.Inventory inventory) {
 
-        if (inventory.getStack(40).getItem() == Items.SHIELD) return 40;
+        if (inventory.getItem(40).getItem() == Items.SHIELD) return 40;
         
 
         for (int i = 0; i < 36; i++) {
-            if (inventory.getStack(i).getItem() == Items.SHIELD) return i;
+            if (inventory.getItem(i).getItem() == Items.SHIELD) return i;
         }
         return -1;
     }
@@ -1470,39 +1470,39 @@ public class BotCombat {
         return 0;
     }
     
-    private static int findRangedWeapon(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findRangedWeapon(net.minecraft.world.entity.player.Inventory inventory) {
 
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() instanceof CrossbowItem) return i;
         }
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() instanceof BowItem) return i;
         }
         return -1;
     }
     
-    private static int findMace(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findMace(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.MACE) return i;
         }
         return -1;
     }
     
-    private static int findWindCharge(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findWindCharge(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.WIND_CHARGE) return i;
         }
         return -1;
     }
     
     
-    private static int findSpear(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findSpear(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
 
             String itemName = stack.getItem().toString().toLowerCase();
             if (itemName.contains("spear")) return i;
@@ -1511,16 +1511,16 @@ public class BotCombat {
     }
     
     
-    private static int findCobweb(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findCobweb(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.COBWEB) return i;
         }
         return -1;
     }
     
     
-    private static boolean tryPlaceCobweb(ServerPlayerEntity bot, Entity target, net.minecraft.server.MinecraftServer server) {
+    private static boolean tryPlaceCobweb(ServerPlayer bot, Entity target, net.minecraft.server.MinecraftServer server) {
         CombatState state = getState(bot.getName().getString());
         
 
@@ -1531,18 +1531,18 @@ public class BotCombat {
         if (cobwebSlot < 0) return false;
         
 
-        var world = bot.getEntityWorld();
-        net.minecraft.util.math.BlockPos targetPos = target.getBlockPos();
-        if (world.getBlockState(targetPos).getBlock() == net.minecraft.block.Blocks.COBWEB) {
+        var world = bot.level();
+        net.minecraft.core.BlockPos targetPos = target.blockPosition();
+        if (world.getBlockState(targetPos).getBlock() == net.minecraft.world.level.block.Blocks.COBWEB) {
             return false;
         }
         
 
         if (cobwebSlot >= 9) {
-            ItemStack cobweb = inventory.getStack(cobwebSlot);
-            ItemStack current = inventory.getStack(0);
-            inventory.setStack(cobwebSlot, current);
-            inventory.setStack(0, cobweb);
+            ItemStack cobweb = inventory.getItem(cobwebSlot);
+            ItemStack current = inventory.getItem(0);
+            inventory.setItem(cobwebSlot, current);
+            inventory.setItem(0, cobweb);
             cobwebSlot = 0;
         }
         
@@ -1557,12 +1557,12 @@ public class BotCombat {
     }
     
     
-    private static void handleCobwebPlacement(ServerPlayerEntity bot, Entity target, CombatState state, net.minecraft.server.MinecraftServer server) {
+    private static void handleCobwebPlacement(ServerPlayer bot, Entity target, CombatState state, net.minecraft.server.MinecraftServer server) {
         state.cobwebPlaceTicks++;
         
 
-        Vec3d targetFeet = new Vec3d(target.getX(), target.getY() - 0.5, target.getZ());
-        Vec3d botPos = bot.getEyePos();
+        Vec3 targetFeet = new Vec3(target.getX(), target.getY() - 0.5, target.getZ());
+        Vec3 botPos = bot.getEyePosition();
         
         double dx = targetFeet.x - botPos.x;
         double dy = targetFeet.y - botPos.y;
@@ -1573,16 +1573,16 @@ public class BotCombat {
         float yaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
         float pitch = (float) -(Math.atan2(dy, horizontalDist) * (180.0 / Math.PI));
         
-        bot.setYaw(yaw);
-        bot.setPitch(pitch);
-        bot.setHeadYaw(yaw);
+        bot.setYRot(yaw);
+        bot.setXRot(pitch);
+        bot.setYHeadRot(yaw);
         
 
         if (state.cobwebPlaceTicks % 2 == 0 && state.cobwebPlaceTicks <= 6) {
             try {
-                server.getCommandManager().getDispatcher().execute(
+                server.getCommands().getDispatcher().execute(
                     "player " + bot.getName().getString() + " use once", 
-                    server.getCommandSource()
+                    server.getSharedSuggestionProvider()
                 );
             } catch (Exception e) {
 
@@ -1597,9 +1597,9 @@ public class BotCombat {
         }
     }
     
-    private static boolean hasArrows(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static boolean hasArrows(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() instanceof ArrowItem) return true;
         }
         return false;
@@ -1624,9 +1624,9 @@ public class BotCombat {
     }
     
     
-    public static void onBotDamaged(ServerPlayerEntity bot, DamageSource source) {
+    public static void onBotDamaged(ServerPlayer bot, DamageSource source) {
 
-        Entity attacker = source.getAttacker();
+        Entity attacker = source.getEntity();
         if (attacker == null) {
             attacker = source.getSource();
         }

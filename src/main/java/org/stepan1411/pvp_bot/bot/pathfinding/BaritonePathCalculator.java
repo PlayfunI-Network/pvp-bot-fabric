@@ -1,9 +1,9 @@
 package org.stepan1411.pvp_bot.bot.pathfinding;
 
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ public class BaritonePathCalculator {
     }
     
     
-    public static List<Vec3d> calculatePath(ServerPlayerEntity bot, Vec3d targetPos) {
+    public static List<Vec3> calculatePath(ServerPlayer bot, Vec3 targetPos) {
 
 
 
@@ -37,7 +37,7 @@ public class BaritonePathCalculator {
     }
     
     
-    private static List<Vec3d> tryBaritonePathfinding(ServerPlayerEntity bot, Vec3d targetPos) {
+    private static List<Vec3> tryBaritonePathfinding(ServerPlayer bot, Vec3 targetPos) {
 
 
 

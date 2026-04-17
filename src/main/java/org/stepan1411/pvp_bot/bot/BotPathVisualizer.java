@@ -3,8 +3,8 @@ package org.stepan1411.pvp_bot.bot;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
@@ -24,7 +24,7 @@ public class BotPathVisualizer {
         tickCounter = 0;
         
 
-        ServerWorld world = server.getOverworld();
+        ServerLevel world = server.getOverworld();
         if (world == null) {
             return;
         }
@@ -39,12 +39,12 @@ public class BotPathVisualizer {
     }
     
     
-    private static void visualizePath(ServerWorld world, BotPath.PathData path) {
-        List<Vec3d> points = path.points;
+    private static void visualizePath(ServerLevel world, BotPath.PathData path) {
+        List<Vec3> points = path.points;
         
 
         for (int i = 0; i < points.size(); i++) {
-            Vec3d point = points.get(i);
+            Vec3 point = points.get(i);
             
 
             for (int angle = 0; angle < 360; angle += 30) {
@@ -77,21 +77,21 @@ public class BotPathVisualizer {
         
 
         for (int i = 0; i < points.size() - 1; i++) {
-            Vec3d start = points.get(i);
-            Vec3d end = points.get(i + 1);
+            Vec3 start = points.get(i);
+            Vec3 end = points.get(i + 1);
             drawLine(world, start, end);
         }
         
 
         if (!path.loop && points.size() > 1) {
-            Vec3d start = points.get(points.size() - 1);
-            Vec3d end = points.get(0);
+            Vec3 start = points.get(points.size() - 1);
+            Vec3 end = points.get(0);
             drawLine(world, start, end);
         }
     }
     
     
-    private static void drawLine(ServerWorld world, Vec3d start, Vec3d end) {
+    private static void drawLine(ServerLevel world, Vec3 start, Vec3 end) {
         double distance = start.distanceTo(end);
         int particleCount = (int) (distance * 2);
         

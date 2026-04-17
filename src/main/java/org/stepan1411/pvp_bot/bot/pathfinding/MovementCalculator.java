@@ -1,8 +1,8 @@
 package org.stepan1411.pvp_bot.bot.pathfinding;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,9 +18,9 @@ public class MovementCalculator {
     public static final double DIAGONAL_COST = WALK_ONE_BLOCK_COST * 1.414;
     public static final double CLIMB_COST = 20.0 / 2.35;
     
-    private final World world;
+    private final Level world;
     
-    public MovementCalculator(World world) {
+    public MovementCalculator(Level world) {
         this.world = world;
     }
     
@@ -178,17 +178,17 @@ public class MovementCalculator {
     
     private boolean isClimbable(BlockPos pos) {
         BlockState state = world.getBlockState(pos);
-        return state.getBlock() instanceof net.minecraft.block.LadderBlock ||
-               state.getBlock() instanceof net.minecraft.block.VineBlock ||
-               state.isOf(net.minecraft.block.Blocks.SCAFFOLDING) ||
-               state.isOf(net.minecraft.block.Blocks.TWISTING_VINES) ||
-               state.isOf(net.minecraft.block.Blocks.WEEPING_VINES);
+        return state.getBlock() instanceof net.minecraft.world.level.block.LadderBlock ||
+               state.getBlock() instanceof net.minecraft.world.level.block.VineBlock ||
+               state.isOf(net.minecraft.world.level.block.Blocks.SCAFFOLDING) ||
+               state.isOf(net.minecraft.world.level.block.Blocks.TWISTING_VINES) ||
+               state.isOf(net.minecraft.world.level.block.Blocks.WEEPING_VINES);
     }
     
     
     private boolean isStairs(BlockPos pos) {
         BlockState state = world.getBlockState(pos);
-        return state.getBlock() instanceof net.minecraft.block.StairsBlock;
+        return state.getBlock() instanceof net.minecraft.world.level.block.StairsBlock;
     }
     
     

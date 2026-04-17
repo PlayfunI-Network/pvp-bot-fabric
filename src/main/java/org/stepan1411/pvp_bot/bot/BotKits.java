@@ -4,14 +4,13 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.serialization.DataResult;
-import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.registry.RegistryOps;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.io.Reader;
 import java.io.Writer;
@@ -33,7 +32,7 @@ public class BotKits {
         currentServer = srv;
         
 
-        Path configDir = FabricLoader.getInstance().getConfigDir().resolve("pvpbot");
+        Path configDir = org.stepan1411.pvp_bot.PvpBotPlugin.getInstance().getDataFolder().toPath().getParent().resolve("pvpbot");
         try {
             Files.createDirectories(configDir);
         } catch (Exception e) {
@@ -45,7 +44,7 @@ public class BotKits {
     }
     
     
-    public static boolean createKit(String kitName, ServerPlayerEntity player) {
+    public static boolean createKit(String kitName, ServerPlayer player) {
         String key = kitName.toLowerCase();
         if (kitsRaw.containsKey(key)) {
             return false;
@@ -53,16 +52,16 @@ public class BotKits {
         
         Map<String, Object> kitItems = new HashMap<>();
         var inventory = player.getInventory();
-        var registryOps = RegistryOps.of(NbtOps.INSTANCE, player.getRegistryManager());
+        var registryOps = RegistryOps.of(NbtOps.INSTANCE, player.registryAccess());
         
 
         for (int i = 0; i < 41; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (!stack.isEmpty()) {
 
-                DataResult<NbtElement> result = ItemStack.CODEC.encodeStart(registryOps, stack);
+                DataResult<Tag> result = ItemStack.CODEC.encodeStart(registryOps, stack);
                 if (result.result().isPresent()) {
-                    NbtElement nbt = result.result().get();
+                    Tag nbt = result.result().get();
 
                     kitItems.put(String.valueOf(i), nbt.toString());
                 }
@@ -96,11 +95,11 @@ public class BotKits {
     }
     
     
-    public static Map<Integer, ItemStack> getKitItems(String kitName, ServerPlayerEntity player) {
+    public static Map<Integer, ItemStack> getKitItems(String kitName, ServerPlayer player) {
         Map<String, Object> data = kitsRaw.get(kitName.toLowerCase());
         if (data == null) return null;
         
-        var registryOps = RegistryOps.of(NbtOps.INSTANCE, player.getRegistryManager());
+        var registryOps = RegistryOps.of(NbtOps.INSTANCE, player.registryAccess());
         Map<Integer, ItemStack> items = new HashMap<>();
         
         for (var entry : data.entrySet()) {
@@ -109,7 +108,7 @@ public class BotKits {
                 String nbtString = entry.getValue().toString();
                 
 
-                NbtCompound nbt = net.minecraft.nbt.StringNbtReader.readCompound(nbtString);
+                CompoundTag nbt = net.minecraft.nbt.TagParser.parseCompound(nbtString);
                 
 
                 DataResult<ItemStack> result = ItemStack.CODEC.parse(registryOps, nbt);
@@ -124,7 +123,7 @@ public class BotKits {
     }
     
     
-    public static boolean giveKit(String kitName, ServerPlayerEntity bot) {
+    public static boolean giveKit(String kitName, ServerPlayer bot) {
         Map<Integer, ItemStack> kitItems = getKitItems(kitName, bot);
         if (kitItems == null) return false;
         
@@ -137,7 +136,7 @@ public class BotKits {
         for (var entry : kitItems.entrySet()) {
             int slot = entry.getKey();
             ItemStack stack = entry.getValue();
-            inventory.setStack(slot, stack.copy());
+            inventory.setItem(slot, stack.copy());
         }
         
         return true;

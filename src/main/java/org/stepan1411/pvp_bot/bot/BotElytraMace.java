@@ -1,12 +1,12 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Hand;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.level.Level;
 import org.stepan1411.pvp_bot.bot.BotSettings;
 
 
@@ -41,7 +41,7 @@ public class BotElytraMace {
     }
     
     
-    public static boolean canUseElytraMace(ServerPlayerEntity bot, Entity target, BotSettings settings) {
+    public static boolean canUseElytraMace(ServerPlayer bot, Entity target, BotSettings settings) {
         if (!settings.isElytraMaceEnabled()) {
             return false;
         }
@@ -51,16 +51,16 @@ public class BotElytraMace {
             return false;
         }
         
-        PlayerInventory inventory = bot.getInventory();
+        Inventory inventory = bot.getInventory();
         boolean hasAllItems = hasElytra(inventory) && hasMace(inventory) && hasFireworks(inventory) && hasChestplate(inventory);
         
         return hasAllItems;
     }
     
     
-    public static boolean doElytraMace(ServerPlayerEntity bot, Entity target, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    public static boolean doElytraMace(ServerPlayer bot, Entity target, BotSettings settings, net.minecraft.server.MinecraftServer server) {
         ElytraMaceState state = getState(bot.getName().getString());
-        World world = bot.getEntityWorld();
+        Level world = bot.level();
         double distance = bot.distanceTo(target);
         
 
@@ -113,9 +113,9 @@ public class BotElytraMace {
     }
     
     
-    private static boolean stepPrepareElytra(ServerPlayerEntity bot, Entity target, ElytraMaceState state, 
-                                           net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepPrepareElytra(ServerPlayer bot, Entity target, ElytraMaceState state, 
+                                           net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         
 
         state.elytraSlot = findElytra(inventory);
@@ -134,9 +134,9 @@ public class BotElytraMace {
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " use once", 
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
             
             state.elytraEquipped = true;
@@ -151,9 +151,9 @@ public class BotElytraMace {
     }
     
     
-    private static boolean stepTakeoff(ServerPlayerEntity bot, Entity target, ElytraMaceState state,
-                                     net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepTakeoff(ServerPlayer bot, Entity target, ElytraMaceState state,
+                                     net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         
 
         if (state.takeoffTicks == 0) {
@@ -164,7 +164,7 @@ public class BotElytraMace {
         
 
         if (state.takeoffTicks == 1) {
-            bot.setPitch(0.0f);
+            bot.setXRot(0.0f);
             bot.jump();
         }
         
@@ -183,9 +183,9 @@ public class BotElytraMace {
             int fireworkCount = settings.getElytraMaceFireworkCount();
             try {
                 for (int i = 0; i < fireworkCount; i++) {
-                    server.getCommandManager().getDispatcher().execute(
+                    server.getCommands().getDispatcher().execute(
                         "player " + bot.getName().getString() + " use once", 
-                        server.getCommandSource()
+                        server.getSharedSuggestionProvider()
                     );
                 }
             } catch (Exception e) {
@@ -195,7 +195,7 @@ public class BotElytraMace {
         
 
         if (state.takeoffTicks == 12) {
-            bot.setPitch(-90.0f);
+            bot.setXRot(-90.0f);
             state.step = 2;
             state.cooldownTicks = 3;
         }
@@ -204,8 +204,8 @@ public class BotElytraMace {
     }
     
     
-    private static boolean stepWaitAltitude(ServerPlayerEntity bot, Entity target, ElytraMaceState state,
-                                          net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
+    private static boolean stepWaitAltitude(ServerPlayer bot, Entity target, ElytraMaceState state,
+                                          net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
         state.takeoffTicks++;
         double currentHeight = bot.getY() - state.startY;
         int minAltitude = settings.getElytraMaceMinAltitude();
@@ -237,9 +237,9 @@ public class BotElytraMace {
     }
     
     
-    private static boolean stepRemoveElytraAndWait(ServerPlayerEntity bot, Entity target, ElytraMaceState state,
-                                                 net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepRemoveElytraAndWait(ServerPlayer bot, Entity target, ElytraMaceState state,
+                                                 net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         
 
         if (state.chestplateSlot >= 0) {
@@ -251,9 +251,9 @@ public class BotElytraMace {
             
 
             try {
-                server.getCommandManager().getDispatcher().execute(
+                server.getCommands().getDispatcher().execute(
                     "player " + bot.getName().getString() + " use once", 
-                    server.getCommandSource()
+                    server.getSharedSuggestionProvider()
                 );
             } catch (Exception e) {
 
@@ -268,9 +268,9 @@ public class BotElytraMace {
     }
     
     
-    private static boolean stepGlideToTarget(ServerPlayerEntity bot, Entity target, ElytraMaceState state,
-                                           net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepGlideToTarget(ServerPlayer bot, Entity target, ElytraMaceState state,
+                                           net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         double distance = bot.distanceTo(target);
         
 
@@ -280,9 +280,9 @@ public class BotElytraMace {
             }
             
             try {
-                server.getCommandManager().getDispatcher().execute(
+                server.getCommands().getDispatcher().execute(
                     "player " + bot.getName().getString() + " use once", 
-                    server.getCommandSource()
+                    server.getSharedSuggestionProvider()
                 );
                 state.elytraEquipped = true;
             } catch (Exception e) {
@@ -303,7 +303,7 @@ public class BotElytraMace {
 
         float targetPitch = (float) Math.toDegrees(Math.atan2(deltaY, horizontalDistance));
         targetPitch = Math.max(30.0f, Math.min(90.0f, targetPitch));
-        bot.setPitch(targetPitch);
+        bot.setXRot(targetPitch);
         
 
         double attackDistance = settings.getElytraMaceAttackDistance();
@@ -316,9 +316,9 @@ public class BotElytraMace {
     }
     
     
-    private static boolean stepMaceAttack(ServerPlayerEntity bot, Entity target, ElytraMaceState state,
-                                        net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepMaceAttack(ServerPlayer bot, Entity target, ElytraMaceState state,
+                                        net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         
 
         if (state.elytraEquipped && state.chestplateSlot >= 0) {
@@ -329,9 +329,9 @@ public class BotElytraMace {
             }
             
             try {
-                server.getCommandManager().getDispatcher().execute(
+                server.getCommands().getDispatcher().execute(
                     "player " + bot.getName().getString() + " use once", 
-                    server.getCommandSource()
+                    server.getSharedSuggestionProvider()
                 );
                 state.elytraEquipped = false;
             } catch (Exception e) {
@@ -350,12 +350,12 @@ public class BotElytraMace {
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " attack once", 
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
         } catch (Exception e) {
-            bot.swingHand(Hand.MAIN_HAND);
+            bot.swing(InteractionInteractionHand.MAIN_HAND);
         }
         
 
@@ -382,7 +382,7 @@ public class BotElytraMace {
     }
     
     
-    private static void lookAtEntity(ServerPlayerEntity bot, Entity target) {
+    private static void lookAtEntity(ServerPlayer bot, Entity target) {
         double dx = target.getX() - bot.getX();
         double dy = target.getY() - bot.getY();
         double dz = target.getZ() - bot.getZ();
@@ -391,22 +391,22 @@ public class BotElytraMace {
         float yaw = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0f;
         float pitch = (float) (Math.atan2(dy, distance) * 180.0 / Math.PI);
         
-        bot.setYaw(yaw);
-        bot.setPitch(-pitch);
+        bot.setYRot(yaw);
+        bot.setXRot(-pitch);
     }
     
     
-    private static boolean selectItem(ServerPlayerEntity bot, int slot) {
+    private static boolean selectItem(ServerPlayer bot, int slot) {
         if (slot < 0 || slot >= 36) return false;
         
-        PlayerInventory inventory = bot.getInventory();
+        Inventory inventory = bot.getInventory();
         
 
         if (slot >= 9) {
-            ItemStack item = inventory.getStack(slot);
-            ItemStack current = inventory.getStack(8);
-            inventory.setStack(slot, current);
-            inventory.setStack(8, item);
+            ItemStack item = inventory.getItem(slot);
+            ItemStack current = inventory.getItem(8);
+            inventory.setItem(slot, current);
+            inventory.setItem(8, item);
             slot = 8;
         }
         
@@ -415,16 +415,16 @@ public class BotElytraMace {
     }
     
     
-    private static int findElytra(PlayerInventory inventory) {
+    private static int findElytra(Inventory inventory) {
 
-        ItemStack equippedChest = inventory.getStack(38);
+        ItemStack equippedChest = inventory.getItem(38);
         if (!equippedChest.isEmpty() && equippedChest.getItem() == Items.ELYTRA) {
             return 38;
         }
         
 
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.ELYTRA) {
                 return i;
             }
@@ -434,9 +434,9 @@ public class BotElytraMace {
     
     
     
-    private static int findChestplate(PlayerInventory inventory) {
+    private static int findChestplate(Inventory inventory) {
 
-        ItemStack equippedChest = inventory.getStack(38);
+        ItemStack equippedChest = inventory.getItem(38);
         if (!equippedChest.isEmpty()) {
             String itemName = equippedChest.getItem().toString().toLowerCase();
             if (itemName.contains("chestplate")) {
@@ -446,7 +446,7 @@ public class BotElytraMace {
         
 
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             String itemName = stack.getItem().toString().toLowerCase();
             if (itemName.contains("chestplate")) {
                 return i;
@@ -456,9 +456,9 @@ public class BotElytraMace {
     }
     
     
-    private static int findFireworks(PlayerInventory inventory) {
+    private static int findFireworks(Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.FIREWORK_ROCKET) {
                 return i;
             }
@@ -467,9 +467,9 @@ public class BotElytraMace {
     }
     
     
-    private static int findMace(PlayerInventory inventory) {
+    private static int findMace(Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.MACE) {
                 return i;
             }
@@ -478,22 +478,22 @@ public class BotElytraMace {
     }
     
     
-    private static boolean hasElytra(PlayerInventory inventory) {
+    private static boolean hasElytra(Inventory inventory) {
         return findElytra(inventory) >= 0;
     }
     
     
-    private static boolean hasMace(PlayerInventory inventory) {
+    private static boolean hasMace(Inventory inventory) {
         return findMace(inventory) >= 0;
     }
     
     
-    private static boolean hasFireworks(PlayerInventory inventory) {
+    private static boolean hasFireworks(Inventory inventory) {
         return findFireworks(inventory) >= 0;
     }
     
     
-    private static boolean hasChestplate(PlayerInventory inventory) {
+    private static boolean hasChestplate(Inventory inventory) {
         return findChestplate(inventory) >= 0;
     }
     

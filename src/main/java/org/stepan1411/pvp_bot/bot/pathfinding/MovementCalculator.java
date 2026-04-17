@@ -45,7 +45,7 @@ public class MovementCalculator {
         addFallMovement(movements, from);
         
 
-        if (isClimbable(from) || isClimbable(from.up())) {
+        if (isClimbable(from) || isClimbable(from.above())) {
             addClimbMovement(movements, from);
         }
         
@@ -59,7 +59,7 @@ public class MovementCalculator {
 
         if (isStairs(to)) {
 
-            if (canPassThrough(to.up()) && canPassThrough(to.up(2))) {
+            if (canPassThrough(to.above()) && canPassThrough(to.above(2))) {
                 movements.add(new PossibleMovement(to, WALK_ONE_BLOCK_COST * 1.2, MovementType.ASCEND));
             }
             return;
@@ -72,14 +72,14 @@ public class MovementCalculator {
         }
         
 
-        BlockPos ascend = to.up();
-        if (canWalkOn(ascend) && canPassThrough(from.up()) && canPassThrough(from.up(2))) {
+        BlockPos ascend = to.above();
+        if (canWalkOn(ascend) && canPassThrough(from.above()) && canPassThrough(from.above(2))) {
             movements.add(new PossibleMovement(ascend, JUMP_ONE_BLOCK_COST, MovementType.ASCEND));
             return;
         }
         
 
-        BlockPos descend = to.down();
+        BlockPos descend = to.below();
         if (canWalkOn(descend)) {
             movements.add(new PossibleMovement(descend, WALK_ONE_BLOCK_COST * 1.2, MovementType.DESCEND));
         }
@@ -104,8 +104,8 @@ public class MovementCalculator {
     
     
     private void addPillarMovement(List<PossibleMovement> movements, BlockPos from) {
-        BlockPos up = from.up();
-        if (canWalkOn(up) && canPassThrough(from.up()) && canPassThrough(from.up(2))) {
+        BlockPos up = from.above();
+        if (canWalkOn(up) && canPassThrough(from.above()) && canPassThrough(from.above(2))) {
             movements.add(new PossibleMovement(up, JUMP_ONE_BLOCK_COST * 1.5, MovementType.PILLAR));
         }
     }
@@ -114,12 +114,12 @@ public class MovementCalculator {
     private void addFallMovement(List<PossibleMovement> movements, BlockPos from) {
 
         for (int fallDist = 1; fallDist <= 4; fallDist++) {
-            BlockPos down = from.down(fallDist);
+            BlockPos down = from.below(fallDist);
             
 
             boolean pathClear = true;
             for (int i = 1; i < fallDist; i++) {
-                if (!canPassThrough(from.down(i))) {
+                if (!canPassThrough(from.below(i))) {
                     pathClear = false;
                     break;
                 }
@@ -135,28 +135,28 @@ public class MovementCalculator {
     
     
     private void addClimbMovement(List<PossibleMovement> movements, BlockPos from) {
-        BlockPos up = from.up();
-        if (isClimbable(up) && canPassThrough(up.up())) {
+        BlockPos up = from.above();
+        if (isClimbable(up) && canPassThrough(up.above())) {
             movements.add(new PossibleMovement(up, CLIMB_COST, MovementType.CLIMB));
         }
     }
     
     
     private boolean canWalkOn(BlockPos pos) {
-        BlockState belowState = world.getBlockState(pos.down());
+        BlockState belowState = world.getBlockState(pos.below());
         
 
-        if (isStairs(pos.down())) {
-            return canPassThrough(pos) && canPassThrough(pos.up());
+        if (isStairs(pos.below())) {
+            return canPassThrough(pos) && canPassThrough(pos.above());
         }
         
 
-        if (!isSolid(pos.down())) {
+        if (!isSolid(pos.below())) {
             return false;
         }
         
 
-        if (!canPassThrough(pos) || !canPassThrough(pos.up())) {
+        if (!canPassThrough(pos) || !canPassThrough(pos.above())) {
             return false;
         }
         

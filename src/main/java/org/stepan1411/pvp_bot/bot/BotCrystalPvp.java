@@ -288,7 +288,7 @@ public class BotCrystalPvp {
         }
         
 
-        net.minecraft.world.level.block.state.BlockState blockAbove = world.getBlockState(state.lastObsidianPos.up());
+        net.minecraft.world.level.block.state.BlockState blockAbove = world.getBlockState(state.lastObsidianPos.above());
         
         if (!blockAbove.isAir() && !blockAbove.isReplaceable()) {
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " NO space above obsidian! Returning to step 0");
@@ -572,7 +572,7 @@ public class BotCrystalPvp {
                     if (!blockState.getBlock().toString().contains("obsidian")) continue;
                     
 
-                    net.minecraft.world.level.block.state.BlockState blockAbove = world.getBlockState(pos.up());
+                    net.minecraft.world.level.block.state.BlockState blockAbove = world.getBlockState(pos.above());
                     if (!blockAbove.isAir() && !blockAbove.isReplaceable()) continue;
                     
 
@@ -618,7 +618,7 @@ public class BotCrystalPvp {
             }
             
 
-            if (!world.getBlockState(pos.up()).isAir() && !world.getBlockState(pos.up()).isReplaceable()) {
+            if (!world.getBlockState(pos.above()).isAir() && !world.getBlockState(pos.above()).isReplaceable()) {
                 continue;
             }
             

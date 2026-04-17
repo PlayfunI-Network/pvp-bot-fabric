@@ -103,8 +103,8 @@ public class BotEquipment {
         double distance = settings.getDropDistance();
         
 
-        float oldYaw = bot.getYaw();
-        float oldHeadYaw = bot.getHeadYaw();
+        float oldYaw = bot.getYRot();
+        float oldHeadYaw = bot.getYHeadRot();
         
 
         float turnAngle = 90 + (float)(Math.random() * 180);

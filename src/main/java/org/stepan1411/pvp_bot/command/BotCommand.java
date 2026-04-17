@@ -1357,8 +1357,7 @@ public class BotCommand {
                 return 0;
             }
             
-            SettingsGui gui = new SettingsGui(player);
-            gui.open();
+            SettingsGui.open(player.getBukkitEntity());
             return 1;
         } catch (Exception e) {
             source.sendError(Component.literal("Failed to open settings GUI: " + e.getMessage()));
@@ -1790,7 +1789,7 @@ public class BotCommand {
             }
             
 
-            org.stepan1411.pvp_bot.gui.BotMenuGui.openMainMenu(player);
+            org.stepan1411.pvp_bot.gui.BotMenuGui.openMainMenu(player.getBukkitEntity());
             return 1;
         } catch (Exception e) {
             source.sendError(Component.literal("Failed to open menu: " + e.getMessage()));

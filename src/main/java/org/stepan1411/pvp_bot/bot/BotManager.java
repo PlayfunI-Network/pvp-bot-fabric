@@ -41,8 +41,8 @@ public class BotManager {
             this.x = bot.getX();
             this.y = bot.getY();
             this.z = bot.getZ();
-            this.yaw = bot.getYaw();
-            this.pitch = bot.getPitch();
+            this.yaw = bot.getYRot();
+            this.pitch = bot.getXRot();
             this.dimension = bot.level().dimension().location().toString();
             this.gamemode = bot.gameMode.getGameModeForPlayer().getName();
         }
@@ -409,6 +409,7 @@ public class BotManager {
     }
 
     public static ServerPlayer getBot(MinecraftServer server, String name) {
+        if (server == null) return null;
         return server.getPlayerList().getPlayerByName(name);
     }
 
@@ -418,6 +419,7 @@ public class BotManager {
 
             BotCombat.removeState(name);
             BotUtils.removeState(name);
+            BotNavigation.removeState(name);
             BotNavigation.resetIdle(name);
             BotBaritone.removeBaritone(name);
             BotMovement.clearState(name);

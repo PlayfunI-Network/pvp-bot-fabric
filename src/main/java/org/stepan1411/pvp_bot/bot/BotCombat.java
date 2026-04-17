@@ -683,7 +683,7 @@ public class BotCombat {
                     );
                     System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " activating shield in main hand");
                 } catch (Exception e) {
-                    bot.setCurrentHand(InteractionHand.MAIN_HAND);
+                    bot.startUsingItem(InteractionHand.MAIN_HAND);
                 }
                 combatState.isUsingShield = true;
             }
@@ -706,7 +706,7 @@ public class BotCombat {
                     );
                     System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " activating shield in offhand");
                 } catch (Exception e) {
-                    bot.setCurrentHand(InteractionHand.OFF_HAND);
+                    bot.startUsingItem(InteractionHand.OFF_HAND);
                 }
                 combatState.isUsingShield = true;
             }
@@ -954,7 +954,7 @@ public class BotCombat {
     private static void handleBowCombat(ServerPlayer bot, Entity target, CombatState state, double distance, BotSettings settings) {
         if (!state.isDrawingBow) {
 
-            bot.setCurrentHand(InteractionHand.MAIN_HAND);
+            bot.startUsingItem(InteractionHand.MAIN_HAND);
             state.isDrawingBow = true;
             state.bowDrawTicks = 0;
         } else {
@@ -982,7 +982,7 @@ public class BotCombat {
             state.isDrawingBow = false;
         } else if (!state.isDrawingBow) {
 
-            bot.setCurrentHand(InteractionHand.MAIN_HAND);
+            bot.startUsingItem(InteractionHand.MAIN_HAND);
             state.isDrawingBow = true;
             state.bowDrawTicks = 0;
         } else {
@@ -1134,7 +1134,7 @@ public class BotCombat {
 
             if (!state.isChargingSpear) {
 
-                bot.setCurrentHand(InteractionHand.MAIN_HAND);
+                bot.startUsingItem(InteractionHand.MAIN_HAND);
                 state.isChargingSpear = true;
                 state.spearChargeTicks = 0;
             }
@@ -1241,7 +1241,7 @@ public class BotCombat {
 
         if (random.nextInt(100) < settings.getMistakeChance()) {
             float yawOffset = (random.nextFloat() - 0.5f) * 60;
-            bot.setYRot(bot.getYaw() + yawOffset);
+            bot.setYRot(bot.getYRot() + yawOffset);
         }
         
 
@@ -1264,7 +1264,7 @@ public class BotCombat {
             );
         } catch (Exception e) {
 
-            bot.setCurrentHand(InteractionHand.OFF_HAND);
+            bot.startUsingItem(InteractionHand.OFF_HAND);
         }
     }
     

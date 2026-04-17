@@ -328,7 +328,7 @@ public class BotUtils {
             state.eatingTicks = 0;
             state.eatingSlot = slot;
             state.buffPotionCooldown = 10;
-            bot.setCurrentHand(InteractionHand.MAIN_HAND);
+            bot.startUsingItem(InteractionHand.MAIN_HAND);
             return true;
         }
         
@@ -372,7 +372,7 @@ public class BotUtils {
             ItemStack foodStack = bot.getMainHandItem();
             if (foodStack.getItem().getComponents().get(DataComponents.FOOD) != null) {
 
-                bot.setCurrentHand(InteractionHand.MAIN_HAND);
+                bot.startUsingItem(InteractionHand.MAIN_HAND);
             }
             
 
@@ -756,7 +756,7 @@ public class BotUtils {
             state.eatingTicks = 0;
             state.eatingSlot = potionSlot;
             state.potionCooldown = 5;
-            bot.setCurrentHand(InteractionHand.MAIN_HAND);
+            bot.startUsingItem(InteractionHand.MAIN_HAND);
             return true;
         }
         
@@ -1003,7 +1003,7 @@ public class BotUtils {
             
             if (state.cobwebEscapeTicks == 5) {
 
-                net.minecraft.core.BlockPos waterPos = bot.blockPosition().down();
+                net.minecraft.core.BlockPos waterPos = bot.blockPosition().below();
                 state.waterPosition = waterPos;
                 
                 System.out.println("[COBWEB] Tick 5 - Collecting water at position: " + waterPos);
@@ -1066,7 +1066,7 @@ public class BotUtils {
             state.cobwebEscapeSlot = waterSlot;
             state.isEscapingCobweb = true;
             state.cobwebEscapeTicks = 0;
-            state.waterPosition = bot.blockPosition().down();
+            state.waterPosition = bot.blockPosition().below();
             state.needsToCollectWater = false;
             
 

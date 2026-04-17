@@ -135,19 +135,19 @@ public class BotUtils {
     
     
     private static void handleSwimming(ServerPlayer bot) {
-        if (bot.isTouchingWater() || bot.isSubmergedInWater()) {
+        if (bot.isInWater() || bot.isUnderWater()) {
             bot.setSwimming(true);
             
 
-            if (bot.isSubmergedInWater()) {
+            if (bot.isUnderWater()) {
                 bot.push(0, 0.08, 0);
                 bot.setSprinting(true);
-            } else if (bot.isTouchingWater()) {
+            } else if (bot.isInWater()) {
                 bot.push(0, 0.04, 0);
             }
             
 
-            if (bot.isOnGround() && bot.isTouchingWater()) {
+            if (bot.isOnGround() && bot.isInWater()) {
                 bot.jump();
             }
         }
@@ -328,7 +328,7 @@ public class BotUtils {
             state.eatingTicks = 0;
             state.eatingSlot = slot;
             state.buffPotionCooldown = 10;
-            bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
+            bot.setCurrentHand(InteractionHand.MAIN_HAND);
             return true;
         }
         
@@ -372,7 +372,7 @@ public class BotUtils {
             ItemStack foodStack = bot.getMainHandItem();
             if (foodStack.getItem().getComponents().get(DataComponents.FOOD) != null) {
 
-                bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
+                bot.setCurrentHand(InteractionHand.MAIN_HAND);
             }
             
 
@@ -756,7 +756,7 @@ public class BotUtils {
             state.eatingTicks = 0;
             state.eatingSlot = potionSlot;
             state.potionCooldown = 5;
-            bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
+            bot.setCurrentHand(InteractionHand.MAIN_HAND);
             return true;
         }
         

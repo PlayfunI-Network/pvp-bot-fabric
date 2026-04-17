@@ -446,7 +446,7 @@ public class BotCombat {
 
         if (server != null) {
             for (var world : server.getAllLevels()) {
-                for (Entity entity : level.getAllEntities()) {
+                for (Entity entity : world.getAllEntities()) {
                     if (entity.getName().getString().equalsIgnoreCase(name) && entity != bot) {
                         return entity;
                     }
@@ -458,7 +458,7 @@ public class BotCombat {
     
     private static Entity findNearestEnemy(ServerPlayer bot, BotSettings settings, net.minecraft.server.MinecraftServer server) {
         double maxDist = settings.getMaxTargetDistance();
-        Box searchBox = bot.getBoundingAABB().expand(maxDist);
+        AABB searchBox = bot.getBoundingBox().inflate(maxDist);
         
         Entity nearest = null;
         double nearestDist = maxDist + 1;
@@ -466,7 +466,7 @@ public class BotCombat {
 
         if (server != null) {
             for (var world : server.getAllLevels()) {
-                for (Entity entity : level.getEntities(bot, searchBox)) {
+                for (Entity entity : world.getEntities(bot, searchBox)) {
                     if (!isValidTarget(bot, entity, settings)) continue;
                     
                     double dist = bot.distanceTo(entity);
@@ -575,7 +575,7 @@ public class BotCombat {
         
 
         ItemStack mainHand = player.getMainHandItem();
-        boolean hasMace = mainInteractionHand.getItem() == Items.MACE;
+        boolean hasMace = mainHand.getItem() == Items.MACE;
         
         if (!hasMace) return false;
         
@@ -683,7 +683,7 @@ public class BotCombat {
                     );
                     System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " activating shield in main hand");
                 } catch (Exception e) {
-                    bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
+                    bot.setCurrentHand(InteractionHand.MAIN_HAND);
                 }
                 combatState.isUsingShield = true;
             }
@@ -706,7 +706,7 @@ public class BotCombat {
                     );
                     System.out.println("[MACE_DEFENSE] " + bot.getName().getString() + " activating shield in offhand");
                 } catch (Exception e) {
-                    bot.setCurrentHand(InteractionInteractionHand.OFF_HAND);
+                    bot.setCurrentHand(InteractionHand.OFF_HAND);
                 }
                 combatState.isUsingShield = true;
             }
@@ -954,7 +954,7 @@ public class BotCombat {
     private static void handleBowCombat(ServerPlayer bot, Entity target, CombatState state, double distance, BotSettings settings) {
         if (!state.isDrawingBow) {
 
-            bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
+            bot.setCurrentHand(InteractionHand.MAIN_HAND);
             state.isDrawingBow = true;
             state.bowDrawTicks = 0;
         } else {
@@ -982,7 +982,7 @@ public class BotCombat {
             state.isDrawingBow = false;
         } else if (!state.isDrawingBow) {
 
-            bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
+            bot.setCurrentHand(InteractionHand.MAIN_HAND);
             state.isDrawingBow = true;
             state.bowDrawTicks = 0;
         } else {
@@ -1134,7 +1134,7 @@ public class BotCombat {
 
             if (!state.isChargingSpear) {
 
-                bot.setCurrentHand(InteractionInteractionHand.MAIN_HAND);
+                bot.setCurrentHand(InteractionHand.MAIN_HAND);
                 state.isChargingSpear = true;
                 state.spearChargeTicks = 0;
             }
@@ -1188,12 +1188,12 @@ public class BotCombat {
 
         if (random.nextInt(100) < settings.getMissChance()) {
 
-            bot.swing(InteractionInteractionHand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
             return;
         }
         
         bot.attack(target);
-        bot.swing(InteractionInteractionHand.MAIN_HAND);
+        bot.swing(InteractionHand.MAIN_HAND);
     }
     
     
@@ -1203,14 +1203,14 @@ public class BotCombat {
         var utilsState = BotUtils.getState(bot.getName().getString());
         if (!BotUtils.canAttack(bot, utilsState)) {
             System.out.println("[COMBAT] " + bot.getName().getString() + " cannot attack - cobweb escape active");
-            bot.swing(InteractionInteractionHand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
             return;
         }
 
         boolean cancelled = org.stepan1411.pvp_bot.api.BotAPIIntegration.fireAttackEvent(bot, target);
         if (cancelled) {
             System.out.println("[COMBAT] " + bot.getName().getString() + " attack cancelled by API");
-            bot.swing(InteractionInteractionHand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
             return;
         }
 
@@ -1220,7 +1220,7 @@ public class BotCombat {
             String targetName = target.getName().getString();
             if (BotFaction.areAllies(botName, targetName)) {
                 System.out.println("[COMBAT] " + bot.getName().getString() + " skipping ally " + targetName);
-                bot.swing(InteractionInteractionHand.MAIN_HAND);
+                bot.swing(InteractionHand.MAIN_HAND);
                 return;
             }
         }
@@ -1233,7 +1233,7 @@ public class BotCombat {
                     server.getSharedSuggestionProvider()
                 );
             } catch (Exception e) {
-                bot.swing(InteractionInteractionHand.MAIN_HAND);
+                bot.swing(InteractionHand.MAIN_HAND);
             }
             return;
         }
@@ -1251,7 +1251,7 @@ public class BotCombat {
                 server.getSharedSuggestionProvider()
             );
         } catch (Exception e) {
-            bot.swing(InteractionInteractionHand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
         }
     }
     
@@ -1264,7 +1264,7 @@ public class BotCombat {
             );
         } catch (Exception e) {
 
-            bot.setCurrentHand(InteractionInteractionHand.OFF_HAND);
+            bot.setCurrentHand(InteractionHand.OFF_HAND);
         }
     }
     

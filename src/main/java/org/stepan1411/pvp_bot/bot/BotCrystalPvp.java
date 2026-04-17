@@ -390,7 +390,7 @@ public class BotCrystalPvp {
             
 
             bot.attack(crystal);
-            bot.swing(InteractionInteractionHand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " hit crystal!");
             
 
@@ -638,14 +638,14 @@ public class BotCrystalPvp {
     
     private static Entity findNearestEndCrystal(ServerPlayer bot, Entity target, double maxDistance) {
         Level world = bot.level();
-        net.minecraft.world.phys.AABB searchBox = target.getBoundingAABB().expand(maxDistance);
+        net.minecraft.world.phys.AABB searchBox = target.getBoundingBox().inflate(maxDistance);
         
         Entity nearestCrystal = null;
         double nearestDist = maxDistance + 1;
         int crystalCount = 0;
         
         
-        for (Entity entity : level.getEntities(bot, searchBox)) {
+        for (Entity entity : world.getEntities(bot, searchBox)) {
             
             if (entity instanceof net.minecraft.world.entity.boss.EnderCrystal) {
                 crystalCount++;
@@ -758,7 +758,7 @@ public class BotCrystalPvp {
             return true;
         } catch (Exception e) {
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " error attacking with sword: " + e.getMessage());
-            bot.swing(InteractionInteractionHand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
             return true;
         }
     }

@@ -280,7 +280,6 @@ public class BotManager {
 
 
     public static boolean spawnBot(MinecraftServer server, String name, CommandSourceStack source) {
-        boolean isNewBot = !bots.contains(name);
 
         ServerPlayer existingPlayer = server.getPlayerList().getPlayerByName(name);
         if (existingPlayer != null && existingPlayer.isAlive()) {
@@ -479,8 +478,10 @@ public class BotManager {
                 botDataMap.remove(name);
                 BotCombat.removeState(name);
                 BotUtils.removeState(name);
+                BotNavigation.removeState(name);
                 BotNavigation.resetIdle(name);
                 BotBaritone.removeBaritone(name);
+                BotMovement.clearState(name);
                 
 
                 try {

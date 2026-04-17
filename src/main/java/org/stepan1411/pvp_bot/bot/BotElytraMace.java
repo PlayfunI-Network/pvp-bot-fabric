@@ -355,7 +355,7 @@ public class BotElytraMace {
                 server.getSharedSuggestionProvider()
             );
         } catch (Exception e) {
-            bot.swing(InteractionInteractionHand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
         }
         
 

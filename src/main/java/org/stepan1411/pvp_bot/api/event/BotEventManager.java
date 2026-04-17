@@ -1,7 +1,7 @@
 package org.stepan1411.pvp_bot.api.event;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +60,7 @@ public class BotEventManager {
     }
     
     
-    public void fireSpawnEvent(ServerPlayerEntity bot) {
+    public void fireSpawnEvent(ServerPlayer bot) {
         for (BotSpawnHandler handler : spawnHandlers) {
             try {
                 handler.onBotSpawn(bot);
@@ -72,7 +72,7 @@ public class BotEventManager {
     }
     
     
-    public void fireDeathEvent(ServerPlayerEntity bot) {
+    public void fireDeathEvent(ServerPlayer bot) {
         for (BotDeathHandler handler : deathHandlers) {
             try {
                 handler.onBotDeath(bot);
@@ -84,7 +84,7 @@ public class BotEventManager {
     }
     
     
-    public boolean fireAttackEvent(ServerPlayerEntity bot, Entity target) {
+    public boolean fireAttackEvent(ServerPlayer bot, Entity target) {
         boolean cancelled = false;
         for (BotAttackHandler handler : attackHandlers) {
             try {
@@ -100,7 +100,7 @@ public class BotEventManager {
     }
     
     
-    public boolean fireDamageEvent(ServerPlayerEntity bot, Entity attacker, float damage) {
+    public boolean fireDamageEvent(ServerPlayer bot, Entity attacker, float damage) {
         boolean cancelled = false;
         for (BotDamageHandler handler : damageHandlers) {
             try {
@@ -116,7 +116,7 @@ public class BotEventManager {
     }
     
     
-    public void fireTickEvent(ServerPlayerEntity bot) {
+    public void fireTickEvent(ServerPlayer bot) {
         for (BotTickHandler handler : tickHandlers) {
             try {
                 handler.onBotTick(bot);

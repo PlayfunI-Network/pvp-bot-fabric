@@ -2,7 +2,6 @@ package org.stepan1411.pvp_bot.bot;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
 import org.stepan1411.pvp_bot.config.WorldConfigHelper;
 
 import java.io.*;
@@ -99,13 +98,6 @@ public class BotSettings {
     }
     
     public static void load() {
-        Path configDir = FabricLoader.getInstance().getConfigDir().resolve("pvpbot");
-        try {
-            Files.createDirectories(configDir);
-        } catch (Exception e) {
-
-        }
-        
         configPath = WorldConfigHelper.getWorldConfigDir().resolve("settings.json");
         
         if (Files.exists(configPath)) {

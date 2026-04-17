@@ -1,6 +1,6 @@
 package org.stepan1411.pvp_bot.bot.pathfinding;
 
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
 
 
 public class PathNode implements Comparable<PathNode> {

@@ -1,13 +1,13 @@
 package org.stepan1411.pvp_bot.api;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerPlayer;
 
 
 public class BotAPIIntegration {
     
     
-    public static void fireSpawnEvent(ServerPlayerEntity bot) {
+    public static void fireSpawnEvent(ServerPlayer bot) {
         if (bot == null) return;
         
         try {
@@ -19,7 +19,7 @@ public class BotAPIIntegration {
     }
     
     
-    public static void fireDeathEvent(ServerPlayerEntity bot) {
+    public static void fireDeathEvent(ServerPlayer bot) {
         if (bot == null) return;
         
         try {
@@ -31,7 +31,7 @@ public class BotAPIIntegration {
     }
     
     
-    public static boolean fireAttackEvent(ServerPlayerEntity bot, Entity target) {
+    public static boolean fireAttackEvent(ServerPlayer bot, Entity target) {
         if (bot == null || target == null) return false;
         
         try {
@@ -44,7 +44,7 @@ public class BotAPIIntegration {
     }
     
     
-    public static boolean fireDamageEvent(ServerPlayerEntity bot, Entity attacker, float damage) {
+    public static boolean fireDamageEvent(ServerPlayer bot, Entity attacker, float damage) {
         if (bot == null) return false;
         
         try {
@@ -57,7 +57,7 @@ public class BotAPIIntegration {
     }
     
     
-    public static void fireTickEvent(ServerPlayerEntity bot) {
+    public static void fireTickEvent(ServerPlayer bot) {
         if (bot == null) return;
         
         try {
@@ -76,7 +76,7 @@ public class BotAPIIntegration {
     }
     
     
-    public static String getBotNameSafe(ServerPlayerEntity bot) {
+    public static String getBotNameSafe(ServerPlayer bot) {
         if (bot == null) return "Unknown";
         try {
             return bot.getName().getString();

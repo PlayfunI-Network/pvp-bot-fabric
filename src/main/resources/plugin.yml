@@ -1,0 +1,16 @@
+name: PVP_bot
+version: '0.0.14'
+main: org.stepan1411.pvp_bot.PvpBotPlugin
+api-version: '1.21'
+description: Advanced PvP bot with combat AI, factions, auto-equip, navigation and more!
+authors: [Stepan1411]
+website: https://modrinth.com/mod/pvp-bot-fabric
+commands:
+  pvpbot:
+    description: PVP Bot main command
+    usage: /pvpbot <subcommand>
+    permission: pvpbot.use
+permissions:
+  pvpbot.use:
+    description: Allows use of pvpbot commands
+    default: op

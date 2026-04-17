@@ -1,6 +1,5 @@
 package org.stepan1411.pvp_bot.api;
 
-import net.minecraft.text.Text;
 import org.stepan1411.pvp_bot.api.event.BotEventManager;
 
 
@@ -13,7 +12,7 @@ public class ExampleEventHandlers {
 
         eventManager.registerSpawnHandler(bot -> {
             System.out.println("[PVP_BOT_API] Example: Bot " + bot.getName().getString() + " spawned!");
-            bot.sendMessage(Text.literal("§a[API] Welcome! API is working correctly."));
+            bot.sendSystemMessage(net.minecraft.network.chat.Component.literal("§a[API] Welcome! API is working correctly."));
         });
         
 
@@ -25,7 +24,7 @@ public class ExampleEventHandlers {
         eventManager.registerAttackHandler((bot, target) -> {
 
             if (target.getType().toString().contains("villager")) {
-                bot.sendMessage(Text.literal("§c[API] Cannot attack villagers!"));
+                bot.sendSystemMessage(net.minecraft.network.chat.Component.literal("§c[API] Cannot attack villagers!"));
                 return true;
             }
             
@@ -39,7 +38,7 @@ public class ExampleEventHandlers {
         eventManager.registerDamageHandler((bot, attacker, damage) -> {
 
             if (attacker == null && damage > 5.0f) {
-                bot.sendMessage(Text.literal("§e[API] Fall damage reduced!"));
+                bot.sendSystemMessage(net.minecraft.network.chat.Component.literal("§e[API] Fall damage reduced!"));
 
 
                 System.out.println("[PVP_BOT_API] Example: Reduced fall damage for " + 

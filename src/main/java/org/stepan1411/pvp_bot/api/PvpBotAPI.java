@@ -1,7 +1,7 @@
 package org.stepan1411.pvp_bot.api;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import org.stepan1411.pvp_bot.bot.BotManager;
 import org.stepan1411.pvp_bot.bot.BotSettings;
 import org.stepan1411.pvp_bot.api.event.BotEventManager;
@@ -25,7 +25,7 @@ public class PvpBotAPI {
     }
     
     
-    public static ServerPlayerEntity getBot(MinecraftServer server, String name) {
+    public static ServerPlayer getBot(MinecraftServer server, String name) {
         return BotManager.getBot(server, name);
     }
     
@@ -66,13 +66,13 @@ public class PvpBotAPI {
     
     
     public static boolean isBotAlive(MinecraftServer server, String name) {
-        ServerPlayerEntity bot = getBot(server, name);
+        ServerPlayer bot = getBot(server, name);
         return bot != null && bot.isAlive();
     }
     
     
     public static float getBotHealth(MinecraftServer server, String name) {
-        ServerPlayerEntity bot = getBot(server, name);
+        ServerPlayer bot = getBot(server, name);
         return bot != null ? bot.getHealth() : -1.0f;
     }
     

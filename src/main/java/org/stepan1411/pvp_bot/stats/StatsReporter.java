@@ -1,7 +1,6 @@
 package org.stepan1411.pvp_bot.stats;
 
 import com.google.gson.JsonObject;
-import net.fabricmc.loader.api.FabricLoader;
 import org.stepan1411.pvp_bot.bot.BotManager;
 import org.stepan1411.pvp_bot.bot.BotSettings;
 
@@ -102,7 +101,7 @@ public class StatsReporter {
             if (currentServer != null) {
                 var playerManager = getPlayerManager();
                 if (playerManager != null) {
-                    int totalPlayers = playerManager.getPlayerList().size();
+                    int totalPlayers = playerManager.getPlayers().size();
                     int realPlayers = totalPlayers - BotManager.getAllBots().size();
                     stats.addProperty("real_players_count", Math.max(0, realPlayers));
                     stats.addProperty("total_players_count", totalPlayers);
@@ -113,7 +112,7 @@ public class StatsReporter {
                     stats.add("bots_list", botsArray);
                     
                     com.google.gson.JsonArray playersArray = new com.google.gson.JsonArray();
-                    for (var player : playerManager.getPlayerList()) {
+                    for (var player : playerManager.getPlayers()) {
                         if (!BotManager.getAllBots().contains(player.getName().getString())) {
                             com.google.gson.JsonObject playerObj = new com.google.gson.JsonObject();
                             playerObj.addProperty("name", player.getName().getString());
@@ -157,10 +156,10 @@ public class StatsReporter {
     }
     
     
-    private static net.minecraft.server.PlayerManager getPlayerManager() {
+    private static net.minecraft.server.players.PlayerList getPlayerManager() {
         try {
             if (currentServer != null) {
-                return currentServer.getPlayerManager();
+                return currentServer.getPlayerList();
             }
         } catch (Exception e) {
 
@@ -190,10 +189,7 @@ public class StatsReporter {
     
     
     private static String getModVersion() {
-        return FabricLoader.getInstance()
-                .getModContainer("pvp_bot")
-                .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
-                .orElse("unknown");
+        return org.stepan1411.pvp_bot.PvpBotPlugin.getInstance().getDescription().getVersion();
     }
     
     

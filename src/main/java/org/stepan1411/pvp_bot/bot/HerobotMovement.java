@@ -1,183 +1,93 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.Vec3d;
-
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 
 public class HerobotMovement {
-    
-    private static boolean herobotAvailable = false;
-    
-    static {
-        try {
 
-            Class.forName("hero.bane.herobot.HeroBot");
-            herobotAvailable = true;
-        } catch (ClassNotFoundException e) {
-            herobotAvailable = false;
-        }
-    }
-    
-    
     public static boolean isHerobotAvailable() {
-        return herobotAvailable;
+        return true;
     }
-    
-    
-    public static boolean walkTowards(ServerPlayerEntity bot, Vec3d targetPos) {
-        if (!herobotAvailable) {
-            return false;
-        }
-        
-        try {
-            MinecraftServer server = bot.getCommandSource().getServer();
-            if (server == null) {
-                return false;
-            }
-            
-            String botName = bot.getName().getString();
-            Vec3d botPos = new Vec3d(bot.getX(), bot.getY(), bot.getZ());
-            
 
-            double dx = targetPos.x - botPos.x;
-            double dz = targetPos.z - botPos.z;
-            double dist = Math.sqrt(dx * dx + dz * dz);
-            
-            if (dist < 0.5) {
+    public static boolean walkTowards(ServerPlayer bot, Vec3 targetPos) {
+        Vec3 botPos = new Vec3(bot.getX(), bot.getY(), bot.getZ());
+        double dx = targetPos.x - botPos.x;
+        double dz = targetPos.z - botPos.z;
+        double dist = Math.sqrt(dx * dx + dz * dz);
 
-                stopMovement(bot);
-                return true;
-            }
-            
-
-            double yaw = Math.toDegrees(Math.atan2(-dx, dz));
-            
-
-            executeCommand(server, String.format("player %s look %.1f 0", botName, yaw));
-            
-
-            executeCommand(server, String.format("player %s move forward", botName));
-            
-
-            if (dist > 3.0) {
-                executeCommand(server, String.format("player %s sprint", botName));
-            } else {
-                executeCommand(server, String.format("player %s unsprint", botName));
-            }
-            
-
-            double dy = targetPos.y - botPos.y;
-            if (dy > 0.5 && bot.isOnGround()) {
-                executeCommand(server, String.format("player %s jump", botName));
-            }
-            
+        if (dist < 0.5) {
+            stopMovement(bot);
             return true;
-        } catch (Exception e) {
-            return false;
+        }
+
+        dx /= dist;
+        dz /= dist;
+
+        float yaw = (float) (Math.toDegrees(Math.atan2(-dx, dz)));
+        bot.setYRot(yaw);
+        bot.setYHeadRot(yaw);
+        bot.setXRot(0);
+
+        bot.setSprinting(dist > 3.0);
+        bot.zza = 1.0f;
+        bot.xxa = 0;
+
+        double moveForce = bot.onGround() ? 0.1 : 0.02;
+        bot.push(dx * moveForce, 0, dz * moveForce);
+
+        double dy = targetPos.y - botPos.y;
+        if (dy > 0.5 && bot.onGround()) {
+            doJump(bot);
+        }
+        return true;
+    }
+
+    public static void stopMovement(ServerPlayer bot) {
+        bot.zza = 0;
+        bot.xxa = 0;
+        bot.setSprinting(false);
+    }
+
+    public static void jump(ServerPlayer bot) {
+        if (bot.onGround()) {
+            doJump(bot);
         }
     }
-    
-    
-    public static void stopMovement(ServerPlayerEntity bot) {
-        if (!herobotAvailable) {
-            return;
-        }
-        
-        try {
-            MinecraftServer server = bot.getCommandSource().getServer();
-            if (server == null) {
-                return;
-            }
-            
-            String botName = bot.getName().getString();
-            
 
-            executeCommand(server, String.format("player %s stop", botName));
-            executeCommand(server, String.format("player %s unsprint", botName));
-        } catch (Exception e) {
-
-        }
+    public static void sprint(ServerPlayer bot, boolean enable) {
+        bot.setSprinting(enable);
     }
-    
-    
-    public static void jump(ServerPlayerEntity bot) {
-        if (!herobotAvailable) {
-            return;
-        }
-        
-        try {
-            MinecraftServer server = bot.getCommandSource().getServer();
-            if (server == null) {
-                return;
-            }
-            
-            String botName = bot.getName().getString();
-            executeCommand(server, String.format("player %s jump", botName));
-        } catch (Exception e) {
 
-        }
+    public static void lookAt(ServerPlayer bot, Vec3 targetPos) {
+        Vec3 botPos = bot.getEyePosition();
+        double dx = targetPos.x - botPos.x;
+        double dy = targetPos.y - botPos.y;
+        double dz = targetPos.z - botPos.z;
+        double horizontalDist = Math.sqrt(dx * dx + dz * dz);
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) -Math.toDegrees(Math.atan2(dy, horizontalDist));
+        bot.setYRot(yaw);
+        bot.setYHeadRot(yaw);
+        bot.setXRot(pitch);
     }
-    
-    
-    public static void sprint(ServerPlayerEntity bot, boolean enable) {
-        if (!herobotAvailable) {
-            return;
-        }
-        
-        try {
-            MinecraftServer server = bot.getCommandSource().getServer();
-            if (server == null) {
-                return;
-            }
-            
-            String botName = bot.getName().getString();
-            if (enable) {
-                executeCommand(server, String.format("player %s sprint", botName));
-            } else {
-                executeCommand(server, String.format("player %s unsprint", botName));
-            }
-        } catch (Exception e) {
 
-        }
+    public static void executeCommand(net.minecraft.server.MinecraftServer server, String command) {
+        // No-op: use direct NMS instead of commands
     }
-    
-    
-    public static void lookAt(ServerPlayerEntity bot, Vec3d targetPos) {
-        if (!herobotAvailable) {
-            return;
-        }
-        
-        try {
-            MinecraftServer server = bot.getCommandSource().getServer();
-            if (server == null) {
-                return;
-            }
-            
-            String botName = bot.getName().getString();
-            Vec3d botPos = bot.getEyePos();
-            
 
-            double dx = targetPos.x - botPos.x;
-            double dy = targetPos.y - botPos.y;
-            double dz = targetPos.z - botPos.z;
-            
-            double horizontalDist = Math.sqrt(dx * dx + dz * dz);
-            double yaw = Math.toDegrees(Math.atan2(-dx, dz));
-            double pitch = -Math.toDegrees(Math.atan2(dy, horizontalDist));
-            
-            executeCommand(server, String.format("player %s look %.1f %.1f", botName, yaw, pitch));
-        } catch (Exception e) {
-
+    private static void doJump(ServerPlayer bot) {
+        float jumpPower = 0.42f;
+        Vec3 vel = bot.getDeltaMovement();
+        bot.setDeltaMovement(vel.x, jumpPower, vel.z);
+        if (bot.isSprinting()) {
+            float f = bot.getYRot() * ((float) Math.PI / 180.0f);
+            bot.setDeltaMovement(
+                bot.getDeltaMovement().x - Mth.sin(f) * 0.2,
+                bot.getDeltaMovement().y,
+                bot.getDeltaMovement().z + Mth.cos(f) * 0.2
+            );
         }
-    }
-    
-    
-    public static void executeCommand(MinecraftServer server, String command) {
-        try {
-            server.getCommandManager().getDispatcher().execute(command, server.getCommandSource());
-        } catch (Exception e) {
-
-        }
+        bot.hasImpulse = true;
     }
 }

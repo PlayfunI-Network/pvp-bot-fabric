@@ -1,9 +1,9 @@
 package org.stepan1411.pvp_bot.bot.pathfinding;
 
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 import java.util.*;
 
@@ -14,10 +14,10 @@ public class AStarPathfinder {
     private static final int MAX_PATH_LENGTH = 1000;
     
     
-    public static List<Vec3d> findPath(ServerPlayerEntity bot, Vec3d targetPos) {
-        World world = bot.getEntityWorld();
-        BlockPos start = bot.getBlockPos();
-        BlockPos goal = BlockPos.ofFloored(targetPos);
+    public static List<Vec3> findPath(ServerPlayer bot, Vec3 targetPos) {
+        Level world = bot.level();
+        BlockPos start = bot.blockPosition();
+        BlockPos goal = BlockPos.containing(targetPos);
         
 
         if (!isValidPosition(world, goal)) {
@@ -31,7 +31,7 @@ public class AStarPathfinder {
     }
     
     
-    private static List<Vec3d> calculatePath(World world, BlockPos start, BlockPos goal) {
+    private static List<Vec3> calculatePath(Level world, BlockPos start, BlockPos goal) {
         MovementCalculator movementCalc = new MovementCalculator(world);
         
 
@@ -116,12 +116,12 @@ public class AStarPathfinder {
     }
     
     
-    private static List<Vec3d> reconstructPath(PathNode goal) {
-        List<Vec3d> path = new ArrayList<>();
+    private static List<Vec3> reconstructPath(PathNode goal) {
+        List<Vec3> path = new ArrayList<>();
         PathNode current = goal;
         
         while (current != null && path.size() < MAX_PATH_LENGTH) {
-            path.add(new Vec3d(
+            path.add(new Vec3(
                 current.pos.getX() + 0.5,
                 current.pos.getY() + 0.1,
                 current.pos.getZ() + 0.5
@@ -134,22 +134,22 @@ public class AStarPathfinder {
     }
     
     
-    private static List<Vec3d> simplifyPath(List<Vec3d> path) {
+    private static List<Vec3> simplifyPath(List<Vec3> path) {
         if (path.size() <= 2) {
             return path;
         }
         
-        List<Vec3d> simplified = new ArrayList<>();
+        List<Vec3> simplified = new ArrayList<>();
         simplified.add(path.get(0));
         
         for (int i = 1; i < path.size() - 1; i++) {
-            Vec3d prev = path.get(i - 1);
-            Vec3d current = path.get(i);
-            Vec3d next = path.get(i + 1);
+            Vec3 prev = path.get(i - 1);
+            Vec3 current = path.get(i);
+            Vec3 next = path.get(i + 1);
             
 
-            Vec3d dir1 = current.subtract(prev).normalize();
-            Vec3d dir2 = next.subtract(current).normalize();
+            Vec3 dir1 = current.subtract(prev).normalize();
+            Vec3 dir2 = next.subtract(current).normalize();
             double dot = dir1.dotProduct(dir2);
             
             if (dot < 0.95) {
@@ -162,12 +162,12 @@ public class AStarPathfinder {
     }
     
     
-    private static boolean isValidPosition(World world, BlockPos pos) {
+    private static boolean isValidPosition(Level world, BlockPos pos) {
         return world.getBlockState(pos).isAir() || world.getBlockState(pos).isLiquid();
     }
     
     
-    private static BlockPos findNearestValid(World world, BlockPos target, int maxRadius) {
+    private static BlockPos findNearestValid(Level world, BlockPos target, int maxRadius) {
         for (int radius = 1; radius <= maxRadius; radius++) {
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dz = -radius; dz <= radius; dz++) {

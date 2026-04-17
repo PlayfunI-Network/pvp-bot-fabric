@@ -1,10 +1,10 @@
 package org.stepan1411.pvp_bot.api.event;
 
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 
 @FunctionalInterface
 public interface BotSpawnHandler {
     
-    void onBotSpawn(ServerPlayerEntity bot);
+    void onBotSpawn(ServerPlayer bot);
 }

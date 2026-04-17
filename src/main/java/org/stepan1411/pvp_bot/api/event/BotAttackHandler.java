@@ -1,11 +1,11 @@
 package org.stepan1411.pvp_bot.api.event;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerPlayer;
 
 
 @FunctionalInterface
 public interface BotAttackHandler {
     
-    boolean onBotAttack(ServerPlayerEntity bot, Entity target);
+    boolean onBotAttack(ServerPlayer bot, Entity target);
 }

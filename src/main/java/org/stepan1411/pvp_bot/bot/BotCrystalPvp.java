@@ -1,14 +1,14 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 
 public class BotCrystalPvp {
@@ -39,20 +39,20 @@ public class BotCrystalPvp {
     }
     
     
-    public static boolean canUseCrystalPvp(ServerPlayerEntity bot, Entity target, BotSettings settings) {
+    public static boolean canUseCrystalPvp(ServerPlayer bot, Entity target, BotSettings settings) {
         if (!settings.isCrystalPvpEnabled()) return false;
         
         double distance = bot.distanceTo(target);
         if (distance < 2.5 || distance > 8.0) return false;
         
-        PlayerInventory inventory = bot.getInventory();
+        Inventory inventory = bot.getInventory();
         return hasObsidian(inventory) && hasEndCrystal(inventory);
     }
     
     
-    public static boolean doCrystalPvp(ServerPlayerEntity bot, Entity target, BotSettings settings, net.minecraft.server.MinecraftServer server) {
+    public static boolean doCrystalPvp(ServerPlayer bot, Entity target, BotSettings settings, net.minecraft.server.MinecraftServer server) {
         CrystalState state = getState(bot.getName().getString());
-        World world = bot.getEntityWorld();
+        Level world = bot.level();
         double distance = bot.distanceTo(target);
         
 
@@ -127,9 +127,9 @@ public class BotCrystalPvp {
     }
     
     
-    private static boolean stepPlaceObsidian(ServerPlayerEntity bot, Entity target, CrystalState state, 
-                                            net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepPlaceObsidian(ServerPlayer bot, Entity target, CrystalState state, 
+                                            net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         
 
         if (!state.swordAttackDone && state.swordAttackCooldown <= 0) {
@@ -148,7 +148,7 @@ public class BotCrystalPvp {
 
         BlockPos existingObsidian = findExistingObsidian(bot, target, world, 5.0);
         if (existingObsidian != null) {
-            double distToExisting = Math.sqrt(bot.squaredDistanceTo(existingObsidian.getX() + 0.5, existingObsidian.getY() + 0.5, existingObsidian.getZ() + 0.5));
+            double distToExisting = Math.sqrt(bot.distanceToSqr(existingObsidian.getX() + 0.5, existingObsidian.getY() + 0.5, existingObsidian.getZ() + 0.5));
             
             if (distToExisting <= 4.0) {
 
@@ -190,7 +190,7 @@ public class BotCrystalPvp {
         }
         
 
-        double distToPos = Math.sqrt(bot.squaredDistanceTo(obsidianPos.getX() + 0.5, obsidianPos.getY() + 0.5, obsidianPos.getZ() + 0.5));
+        double distToPos = Math.sqrt(bot.distanceToSqr(obsidianPos.getX() + 0.5, obsidianPos.getY() + 0.5, obsidianPos.getZ() + 0.5));
         
         if (distToPos > 3.0) {
             moveToward(bot, target, settings.getMoveSpeed());
@@ -198,7 +198,7 @@ public class BotCrystalPvp {
         }
         
 
-        bot.setVelocity(0, bot.getVelocity().y, 0);
+        bot.setDeltaMovement(0, bot.getDeltaMovement().y, 0);
         
 
         if (!selectItem(bot, obsidianSlot)) {
@@ -222,9 +222,9 @@ public class BotCrystalPvp {
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " use once", 
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
             
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " placed obsidian at " + obsidianPos + " (attempt " + state.obsidianPlaceAttempts + "/3)");
@@ -247,9 +247,9 @@ public class BotCrystalPvp {
     }
     
     
-    private static boolean stepPlaceCrystal(ServerPlayerEntity bot, Entity target, CrystalState state,
-                                           net.minecraft.server.MinecraftServer server, World world, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean stepPlaceCrystal(ServerPlayer bot, Entity target, CrystalState state,
+                                           net.minecraft.server.MinecraftServer server, Level world, BotSettings settings) {
+        Inventory inventory = bot.getInventory();
         
 
         if (!state.swordAttackDone && state.swordAttackCooldown <= 0) {
@@ -273,7 +273,7 @@ public class BotCrystalPvp {
         }
         
 
-        net.minecraft.block.BlockState blockAtPos = world.getBlockState(state.lastObsidianPos);
+        net.minecraft.world.level.block.state.BlockState blockAtPos = world.getBlockState(state.lastObsidianPos);
         
         if (!blockAtPos.getBlock().toString().contains("obsidian")) {
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " NO obsidian at position! Returning to step 0");
@@ -288,7 +288,7 @@ public class BotCrystalPvp {
         }
         
 
-        net.minecraft.block.BlockState blockAbove = world.getBlockState(state.lastObsidianPos.up());
+        net.minecraft.world.level.block.state.BlockState blockAbove = world.getBlockState(state.lastObsidianPos.above());
         
         if (!blockAbove.isAir() && !blockAbove.isReplaceable()) {
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " NO space above obsidian! Returning to step 0");
@@ -308,7 +308,7 @@ public class BotCrystalPvp {
         }
         
 
-        bot.setVelocity(0, bot.getVelocity().y, 0);
+        bot.setDeltaMovement(0, bot.getDeltaMovement().y, 0);
         
 
         if (!selectItem(bot, crystalSlot)) {
@@ -331,9 +331,9 @@ public class BotCrystalPvp {
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " use once", 
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
             
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " placed crystal (clicked obsidian at " + state.lastObsidianPos + ") - attempt " + (state.crystalPlaceFailCounter + 1) + "/5");
@@ -360,13 +360,13 @@ public class BotCrystalPvp {
     }
     
     
-    private static boolean stepAttackCrystal(ServerPlayerEntity bot, Entity target, CrystalState state,
-                                            net.minecraft.server.MinecraftServer server, World world, 
+    private static boolean stepAttackCrystal(ServerPlayer bot, Entity target, CrystalState state,
+                                            net.minecraft.server.MinecraftServer server, Level world, 
                                             BotSettings settings, double distance) {
-        PlayerInventory inventory = bot.getInventory();
+        Inventory inventory = bot.getInventory();
         
 
-        bot.setVelocity(0, bot.getVelocity().y, 0);
+        bot.setDeltaMovement(0, bot.getDeltaMovement().y, 0);
         
 
         int weaponSlot = findMeleeWeapon(inventory);
@@ -390,7 +390,7 @@ public class BotCrystalPvp {
             
 
             bot.attack(crystal);
-            bot.swingHand(Hand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " hit crystal!");
             
 
@@ -443,7 +443,7 @@ public class BotCrystalPvp {
     }
     
     
-    private static void maintainDistance(ServerPlayerEntity bot, Entity target, BotSettings settings) {
+    private static void maintainDistance(ServerPlayer bot, Entity target, BotSettings settings) {
         double distance = bot.distanceTo(target);
         
         if (distance < 3.0) {
@@ -459,48 +459,48 @@ public class BotCrystalPvp {
     }
     
     
-    private static void moveToward(ServerPlayerEntity bot, Entity target, double speed) {
-        Vec3d targetPos = new Vec3d(target.getX(), target.getY(), target.getZ());
-        Vec3d botPos = new Vec3d(bot.getX(), bot.getY(), bot.getZ());
-        Vec3d direction = targetPos.subtract(botPos).normalize();
+    private static void moveToward(ServerPlayer bot, Entity target, double speed) {
+        Vec3 targetPos = new Vec3(target.getX(), target.getY(), target.getZ());
+        Vec3 botPos = new Vec3(bot.getX(), bot.getY(), bot.getZ());
+        Vec3 direction = targetPos.subtract(botPos).normalize();
         
-        bot.setVelocity(direction.x * speed, bot.getVelocity().y, direction.z * speed);
-        bot.velocityDirty = true;
-        
-        lookAtEntity(bot, target);
-    }
-    
-    
-    private static void moveAway(ServerPlayerEntity bot, Entity target, double speed) {
-        Vec3d targetPos = new Vec3d(target.getX(), target.getY(), target.getZ());
-        Vec3d botPos = new Vec3d(bot.getX(), bot.getY(), bot.getZ());
-        Vec3d direction = botPos.subtract(targetPos).normalize();
-        
-        bot.setVelocity(direction.x * speed, bot.getVelocity().y, direction.z * speed);
-        bot.velocityDirty = true;
+        bot.setDeltaMovement(direction.x * speed, bot.getDeltaMovement().y, direction.z * speed);
+        bot.hurtMarked = true;
         
         lookAtEntity(bot, target);
     }
     
     
-    private static void strafe(ServerPlayerEntity bot, Entity target, double speed) {
-        Vec3d targetPos = new Vec3d(target.getX(), target.getY(), target.getZ());
-        Vec3d botPos = new Vec3d(bot.getX(), bot.getY(), bot.getZ());
-        Vec3d toTarget = targetPos.subtract(botPos).normalize();
+    private static void moveAway(ServerPlayer bot, Entity target, double speed) {
+        Vec3 targetPos = new Vec3(target.getX(), target.getY(), target.getZ());
+        Vec3 botPos = new Vec3(bot.getX(), bot.getY(), bot.getZ());
+        Vec3 direction = botPos.subtract(targetPos).normalize();
+        
+        bot.setDeltaMovement(direction.x * speed, bot.getDeltaMovement().y, direction.z * speed);
+        bot.hurtMarked = true;
+        
+        lookAtEntity(bot, target);
+    }
+    
+    
+    private static void strafe(ServerPlayer bot, Entity target, double speed) {
+        Vec3 targetPos = new Vec3(target.getX(), target.getY(), target.getZ());
+        Vec3 botPos = new Vec3(bot.getX(), bot.getY(), bot.getZ());
+        Vec3 toTarget = targetPos.subtract(botPos).normalize();
         
 
-        Vec3d strafeDir = new Vec3d(-toTarget.z, 0, toTarget.x);
+        Vec3 strafeDir = new Vec3(-toTarget.z, 0, toTarget.x);
         
-        bot.setVelocity(strafeDir.x * speed, bot.getVelocity().y, strafeDir.z * speed);
-        bot.velocityDirty = true;
+        bot.setDeltaMovement(strafeDir.x * speed, bot.getDeltaMovement().y, strafeDir.z * speed);
+        bot.hurtMarked = true;
         
         lookAtEntity(bot, target);
     }
     
     
-    private static void lookAt(ServerPlayerEntity bot, BlockPos pos) {
-        Vec3d target = new Vec3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        Vec3d botPos = bot.getEyePos();
+    private static void lookAt(ServerPlayer bot, BlockPos pos) {
+        Vec3 target = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        Vec3 botPos = bot.getEyePosition();
         
         double dx = target.x - botPos.x;
         double dy = target.y - botPos.y;
@@ -510,15 +510,15 @@ public class BotCrystalPvp {
         float yaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
         float pitch = (float) -(Math.atan2(dy, horizontalDist) * (180.0 / Math.PI));
         
-        bot.setYaw(yaw);
-        bot.setPitch(pitch);
-        bot.setHeadYaw(yaw);
+        bot.setYRot(yaw);
+        bot.setXRot(pitch);
+        bot.setYHeadRot(yaw);
     }
     
     
-    private static void lookAtEntity(ServerPlayerEntity bot, Entity target) {
-        Vec3d targetPos = target.getEyePos();
-        Vec3d botPos = bot.getEyePos();
+    private static void lookAtEntity(ServerPlayer bot, Entity target) {
+        Vec3 targetPos = target.getEyePosition();
+        Vec3 botPos = bot.getEyePosition();
         
         double dx = targetPos.x - botPos.x;
         double dy = targetPos.y - botPos.y;
@@ -528,21 +528,21 @@ public class BotCrystalPvp {
         float yaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
         float pitch = (float) -(Math.atan2(dy, horizontalDist) * (180.0 / Math.PI));
         
-        bot.setYaw(yaw);
-        bot.setPitch(pitch);
-        bot.setHeadYaw(yaw);
+        bot.setYRot(yaw);
+        bot.setXRot(pitch);
+        bot.setYHeadRot(yaw);
     }
     
     
-    private static boolean selectItem(ServerPlayerEntity bot, int slot) {
-        PlayerInventory inventory = bot.getInventory();
+    private static boolean selectItem(ServerPlayer bot, int slot) {
+        Inventory inventory = bot.getInventory();
         
 
         if (slot >= 9) {
-            ItemStack item = inventory.getStack(slot);
-            ItemStack current = inventory.getStack(0);
-            inventory.setStack(slot, current);
-            inventory.setStack(0, item);
+            ItemStack item = inventory.getItem(slot);
+            ItemStack current = inventory.getItem(0);
+            inventory.setItem(slot, current);
+            inventory.setItem(0, item);
             slot = 0;
         }
         
@@ -552,8 +552,8 @@ public class BotCrystalPvp {
     }
     
     
-    private static BlockPos findExistingObsidian(ServerPlayerEntity bot, Entity target, World world, double maxDistance) {
-        BlockPos targetPos = target.getBlockPos();
+    private static BlockPos findExistingObsidian(ServerPlayer bot, Entity target, Level world, double maxDistance) {
+        BlockPos targetPos = target.blockPosition();
         
 
         int radius = (int) Math.ceil(maxDistance);
@@ -564,19 +564,19 @@ public class BotCrystalPvp {
                     BlockPos pos = targetPos.add(dx, dy, dz);
                     
 
-                    double distFromTarget = Math.sqrt(target.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+                    double distFromTarget = Math.sqrt(target.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
                     if (distFromTarget > maxDistance) continue;
                     
 
-                    net.minecraft.block.BlockState blockState = world.getBlockState(pos);
+                    net.minecraft.world.level.block.state.BlockState blockState = world.getBlockState(pos);
                     if (!blockState.getBlock().toString().contains("obsidian")) continue;
                     
 
-                    net.minecraft.block.BlockState blockAbove = world.getBlockState(pos.up());
+                    net.minecraft.world.level.block.state.BlockState blockAbove = world.getBlockState(pos.above());
                     if (!blockAbove.isAir() && !blockAbove.isReplaceable()) continue;
                     
 
-                    double distFromBot = Math.sqrt(bot.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+                    double distFromBot = Math.sqrt(bot.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
                     if (distFromBot > 4.0) {
                         continue;
                     }
@@ -591,19 +591,19 @@ public class BotCrystalPvp {
     }
     
     
-    private static BlockPos findBestObsidianPosition(ServerPlayerEntity bot, Entity target, World world, java.util.Set<BlockPos> triedPositions) {
-        BlockPos targetPos = target.getBlockPos();
+    private static BlockPos findBestObsidianPosition(ServerPlayer bot, Entity target, Level world, java.util.Set<BlockPos> triedPositions) {
+        BlockPos targetPos = target.blockPosition();
         
 
         BlockPos[] candidates = {
-            targetPos.north(),
-            targetPos.south(),
-            targetPos.east(),
-            targetPos.west(),
-            targetPos.north().east(),
-            targetPos.north().west(),
-            targetPos.south().east(),
-            targetPos.south().west(),
+            targetPos.relative(net.minecraft.core.Direction.NORTH),
+            targetPos.relative(net.minecraft.core.Direction.SOUTH),
+            targetPos.relative(net.minecraft.core.Direction.EAST),
+            targetPos.relative(net.minecraft.core.Direction.WEST),
+            targetPos.relative(net.minecraft.core.Direction.NORTH).relative(net.minecraft.core.Direction.EAST),
+            targetPos.relative(net.minecraft.core.Direction.NORTH).relative(net.minecraft.core.Direction.WEST),
+            targetPos.relative(net.minecraft.core.Direction.SOUTH).relative(net.minecraft.core.Direction.EAST),
+            targetPos.relative(net.minecraft.core.Direction.SOUTH).relative(net.minecraft.core.Direction.WEST),
         };
         
         for (BlockPos pos : candidates) {
@@ -618,12 +618,12 @@ public class BotCrystalPvp {
             }
             
 
-            if (!world.getBlockState(pos.up()).isAir() && !world.getBlockState(pos.up()).isReplaceable()) {
+            if (!world.getBlockState(pos.above()).isAir() && !world.getBlockState(pos.above()).isReplaceable()) {
                 continue;
             }
             
 
-            double dist = Math.sqrt(bot.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+            double dist = Math.sqrt(bot.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
             
             if (dist <= 4.0) {
                 System.out.println("[Crystal PVP] Found suitable position: " + pos);
@@ -636,18 +636,18 @@ public class BotCrystalPvp {
     }
     
     
-    private static Entity findNearestEndCrystal(ServerPlayerEntity bot, Entity target, double maxDistance) {
-        World world = bot.getEntityWorld();
-        net.minecraft.util.math.Box searchBox = target.getBoundingBox().expand(maxDistance);
+    private static Entity findNearestEndCrystal(ServerPlayer bot, Entity target, double maxDistance) {
+        Level world = bot.level();
+        net.minecraft.world.phys.AABB searchBox = target.getBoundingBox().inflate(maxDistance);
         
         Entity nearestCrystal = null;
         double nearestDist = maxDistance + 1;
         int crystalCount = 0;
         
         
-        for (Entity entity : world.getOtherEntities(bot, searchBox)) {
+        for (Entity entity : world.getEntities(bot, searchBox)) {
             
-            if (entity instanceof net.minecraft.entity.decoration.EndCrystalEntity) {
+            if (entity instanceof net.minecraft.world.entity.boss.EnderCrystal) {
                 crystalCount++;
                 double dist = target.distanceTo(entity);
                 System.out.println("[Crystal PVP] Р­С‚Рѕ РєСЂРёСЃС‚Р°Р»Р»! Р”РёСЃС‚Р°РЅС†РёСЏ from target: " + String.format("%.2f", dist));
@@ -668,32 +668,32 @@ public class BotCrystalPvp {
     }
     
     
-    private static int findObsidian(PlayerInventory inventory) {
+    private static int findObsidian(Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.OBSIDIAN) return i;
         }
         return -1;
     }
     
     
-    private static int findEndCrystal(PlayerInventory inventory) {
+    private static int findEndCrystal(Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.END_CRYSTAL) return i;
         }
         return -1;
     }
     
     
-    private static int findMeleeWeapon(PlayerInventory inventory) {
+    private static int findMeleeWeapon(Inventory inventory) {
 
         int bestSlot = -1;
         int bestPriority = -1;
         
 
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             int priority = -1;
             
             if (stack.getItem().toString().contains("sword")) {
@@ -712,19 +712,19 @@ public class BotCrystalPvp {
     }
     
     
-    private static boolean hasObsidian(PlayerInventory inventory) {
+    private static boolean hasObsidian(Inventory inventory) {
         return findObsidian(inventory) >= 0;
     }
     
     
-    private static boolean hasEndCrystal(PlayerInventory inventory) {
+    private static boolean hasEndCrystal(Inventory inventory) {
         return findEndCrystal(inventory) >= 0;
     }
     
     
-    private static boolean attackPlayerWithSword(ServerPlayerEntity bot, Entity target, CrystalState state, 
+    private static boolean attackPlayerWithSword(ServerPlayer bot, Entity target, CrystalState state, 
                                                 net.minecraft.server.MinecraftServer server, BotSettings settings) {
-        PlayerInventory inventory = bot.getInventory();
+        Inventory inventory = bot.getInventory();
         double distance = bot.distanceTo(target);
         
 
@@ -744,21 +744,21 @@ public class BotCrystalPvp {
         lookAtEntity(bot, target);
         
 
-        if (bot.getAttackCooldownProgress(0.5f) < 1.0f) {
+        if (bot.getAttackStrengthScale(0.5f) < 1.0f) {
             return true;
         }
         
 
         try {
-            server.getCommandManager().getDispatcher().execute(
+            server.getCommands().getDispatcher().execute(
                 "player " + bot.getName().getString() + " attack once", 
-                server.getCommandSource()
+                server.getSharedSuggestionProvider()
             );
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " attacked player with sword!");
             return true;
         } catch (Exception e) {
             System.out.println("[Crystal PVP] " + bot.getName().getString() + " error attacking with sword: " + e.getMessage());
-            bot.swingHand(Hand.MAIN_HAND);
+            bot.swing(InteractionHand.MAIN_HAND);
             return true;
         }
     }

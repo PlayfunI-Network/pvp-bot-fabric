@@ -3,8 +3,7 @@ package org.stepan1411.pvp_bot.bot;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 
 import java.io.Reader;
 import java.io.Writer;
@@ -28,7 +27,7 @@ public class BotPath {
     
     public static class PathData {
         public String name;
-        public List<Vec3d> points = new ArrayList<>();
+        public List<Vec3> points = new ArrayList<>();
         public boolean loop = false;
         public boolean attack = true;
         
@@ -41,7 +40,7 @@ public class BotPath {
         public String pathName;
         public int currentPoint = 0;
         public boolean reverse = false;
-        public Vec3d pausedAtPoint = null;
+        public Vec3 pausedAtPoint = null;
         public boolean inCombat = false;
         
         public PathFollower(String pathName) {
@@ -72,7 +71,7 @@ public class BotPath {
     }
     
     
-    public static boolean addPoint(String pathName, Vec3d point) {
+    public static boolean addPoint(String pathName, Vec3 point) {
         PathData path = paths.get(pathName);
         if (path == null) {
             return false;
@@ -153,7 +152,7 @@ public class BotPath {
     }
     
     
-    public static Vec3d getNextPoint(String botName) {
+    public static Vec3 getNextPoint(String botName) {
         PathFollower follower = followers.get(botName);
         if (follower == null) {
             return null;
@@ -268,7 +267,7 @@ public class BotPath {
     }
     
     
-    public static void startCombat(String botName, Vec3d currentTarget) {
+    public static void startCombat(String botName, Vec3 currentTarget) {
         PathFollower follower = followers.get(botName);
         if (follower != null && !follower.inCombat) {
             follower.inCombat = true;
@@ -292,7 +291,7 @@ public class BotPath {
     }
     
     
-    public static Vec3d getPausedPoint(String botName) {
+    public static Vec3 getPausedPoint(String botName) {
         PathFollower follower = followers.get(botName);
         return follower != null ? follower.pausedAtPoint : null;
     }
@@ -318,7 +317,7 @@ public class BotPath {
     
     
     public static void init() {
-        Path configDir = FabricLoader.getInstance().getConfigDir().resolve("pvpbot");
+        Path configDir = org.stepan1411.pvp_bot.PvpBotPlugin.getInstance().getDataFolder().toPath().getParent().resolve("pvpbot");
         
         try {
             Files.createDirectories(configDir);

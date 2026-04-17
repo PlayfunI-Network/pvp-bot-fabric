@@ -1,8 +1,8 @@
 package org.stepan1411.pvp_bot.bot.pathfinding;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,9 +18,9 @@ public class MovementCalculator {
     public static final double DIAGONAL_COST = WALK_ONE_BLOCK_COST * 1.414;
     public static final double CLIMB_COST = 20.0 / 2.35;
     
-    private final World world;
+    private final Level world;
     
-    public MovementCalculator(World world) {
+    public MovementCalculator(Level world) {
         this.world = world;
     }
     
@@ -45,7 +45,7 @@ public class MovementCalculator {
         addFallMovement(movements, from);
         
 
-        if (isClimbable(from) || isClimbable(from.up())) {
+        if (isClimbable(from) || isClimbable(from.above())) {
             addClimbMovement(movements, from);
         }
         
@@ -59,7 +59,7 @@ public class MovementCalculator {
 
         if (isStairs(to)) {
 
-            if (canPassThrough(to.up()) && canPassThrough(to.up(2))) {
+            if (canPassThrough(to.above()) && canPassThrough(to.above(2))) {
                 movements.add(new PossibleMovement(to, WALK_ONE_BLOCK_COST * 1.2, MovementType.ASCEND));
             }
             return;
@@ -72,14 +72,14 @@ public class MovementCalculator {
         }
         
 
-        BlockPos ascend = to.up();
-        if (canWalkOn(ascend) && canPassThrough(from.up()) && canPassThrough(from.up(2))) {
+        BlockPos ascend = to.above();
+        if (canWalkOn(ascend) && canPassThrough(from.above()) && canPassThrough(from.above(2))) {
             movements.add(new PossibleMovement(ascend, JUMP_ONE_BLOCK_COST, MovementType.ASCEND));
             return;
         }
         
 
-        BlockPos descend = to.down();
+        BlockPos descend = to.below();
         if (canWalkOn(descend)) {
             movements.add(new PossibleMovement(descend, WALK_ONE_BLOCK_COST * 1.2, MovementType.DESCEND));
         }
@@ -104,8 +104,8 @@ public class MovementCalculator {
     
     
     private void addPillarMovement(List<PossibleMovement> movements, BlockPos from) {
-        BlockPos up = from.up();
-        if (canWalkOn(up) && canPassThrough(from.up()) && canPassThrough(from.up(2))) {
+        BlockPos up = from.above();
+        if (canWalkOn(up) && canPassThrough(from.above()) && canPassThrough(from.above(2))) {
             movements.add(new PossibleMovement(up, JUMP_ONE_BLOCK_COST * 1.5, MovementType.PILLAR));
         }
     }
@@ -114,12 +114,12 @@ public class MovementCalculator {
     private void addFallMovement(List<PossibleMovement> movements, BlockPos from) {
 
         for (int fallDist = 1; fallDist <= 4; fallDist++) {
-            BlockPos down = from.down(fallDist);
+            BlockPos down = from.below(fallDist);
             
 
             boolean pathClear = true;
             for (int i = 1; i < fallDist; i++) {
-                if (!canPassThrough(from.down(i))) {
+                if (!canPassThrough(from.below(i))) {
                     pathClear = false;
                     break;
                 }
@@ -135,28 +135,28 @@ public class MovementCalculator {
     
     
     private void addClimbMovement(List<PossibleMovement> movements, BlockPos from) {
-        BlockPos up = from.up();
-        if (isClimbable(up) && canPassThrough(up.up())) {
+        BlockPos up = from.above();
+        if (isClimbable(up) && canPassThrough(up.above())) {
             movements.add(new PossibleMovement(up, CLIMB_COST, MovementType.CLIMB));
         }
     }
     
     
     private boolean canWalkOn(BlockPos pos) {
-        BlockState belowState = world.getBlockState(pos.down());
+        BlockState belowState = world.getBlockState(pos.below());
         
 
-        if (isStairs(pos.down())) {
-            return canPassThrough(pos) && canPassThrough(pos.up());
+        if (isStairs(pos.below())) {
+            return canPassThrough(pos) && canPassThrough(pos.above());
         }
         
 
-        if (!isSolid(pos.down())) {
+        if (!isSolid(pos.below())) {
             return false;
         }
         
 
-        if (!canPassThrough(pos) || !canPassThrough(pos.up())) {
+        if (!canPassThrough(pos) || !canPassThrough(pos.above())) {
             return false;
         }
         
@@ -178,17 +178,17 @@ public class MovementCalculator {
     
     private boolean isClimbable(BlockPos pos) {
         BlockState state = world.getBlockState(pos);
-        return state.getBlock() instanceof net.minecraft.block.LadderBlock ||
-               state.getBlock() instanceof net.minecraft.block.VineBlock ||
-               state.isOf(net.minecraft.block.Blocks.SCAFFOLDING) ||
-               state.isOf(net.minecraft.block.Blocks.TWISTING_VINES) ||
-               state.isOf(net.minecraft.block.Blocks.WEEPING_VINES);
+        return state.getBlock() instanceof net.minecraft.world.level.block.LadderBlock ||
+               state.getBlock() instanceof net.minecraft.world.level.block.VineBlock ||
+               state.is(net.minecraft.world.level.block.Blocks.SCAFFOLDING) ||
+               state.is(net.minecraft.world.level.block.Blocks.TWISTING_VINES) ||
+               state.is(net.minecraft.world.level.block.Blocks.WEEPING_VINES);
     }
     
     
     private boolean isStairs(BlockPos pos) {
         BlockState state = world.getBlockState(pos);
-        return state.getBlock() instanceof net.minecraft.block.StairsBlock;
+        return state.getBlock() instanceof net.minecraft.world.level.block.StairsBlock;
     }
     
     

@@ -3,11 +3,10 @@ package org.stepan1411.pvp_bot.bot;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.world.GameMode;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
 import org.stepan1411.pvp_bot.config.WorldConfigHelper;
 
 import java.io.Reader;
@@ -37,15 +36,15 @@ public class BotManager {
         
         public BotData() {}
         
-        public BotData(ServerPlayerEntity bot) {
+        public BotData(ServerPlayer bot) {
             this.name = bot.getName().getString();
             this.x = bot.getX();
             this.y = bot.getY();
             this.z = bot.getZ();
-            this.yaw = bot.getYaw();
-            this.pitch = bot.getPitch();
-            this.dimension = bot.getEntityWorld().getRegistryKey().getValue().toString();
-            this.gamemode = bot.interactionManager.getGameMode().asString();
+            this.yaw = bot.getYRot();
+            this.pitch = bot.getXRot();
+            this.dimension = bot.level().dimension().location().toString();
+            this.gamemode = bot.gameMode.getGameModeForPlayer().getName();
         }
     }
     
@@ -62,7 +61,7 @@ public class BotManager {
         botDataMap.clear();
         System.out.println("[PVP_BOT] Initializing BotManager for new world...");
         
-        Path configDir = FabricLoader.getInstance().getConfigDir().resolve("pvpbot");
+        Path configDir = org.stepan1411.pvp_bot.PvpBotPlugin.getInstance().getDataFolder().toPath().getParent().resolve("pvpbot");
         try {
             Files.createDirectories(configDir);
         } catch (Exception e) {
@@ -105,14 +104,14 @@ public class BotManager {
         if (index < names.length) {
             String name = names[index];
             BotData data = botsToRestore.get(name);
-            ServerPlayerEntity existingPlayer = server.getPlayerManager().getPlayer(name);
+            ServerPlayer existingPlayer = server.getPlayerList().getPlayerByName(name);
             if (existingPlayer != null && !bots.contains(name)) {
                 System.out.println("[PVP_BOT] Skipping bot '" + name + "': real player with this name is online");
                 final int nextIndex = index + 1;
                 server.execute(() -> restoreBotsDelayedWithRetry(server, botsToRestore, nextIndex, 0));
                 return;
             }
-            var dispatcher = server.getCommandManager().getDispatcher();
+            var dispatcher = server.getCommands().getDispatcher();
             boolean success = false;
             
             try {
@@ -125,7 +124,7 @@ public class BotManager {
                 } else {
                     System.out.println("[PVP_BOT] Retry #" + retryCount + " for bot: " + name);
                 }
-                dispatcher.execute(command, server.getCommandSource());
+                dispatcher.execute(command, server.getSharedSuggestionProvider());
                 bots.add(name);
                 botDataMap.put(name, data);
                 success = true;
@@ -137,7 +136,7 @@ public class BotManager {
                         "player %s spawn at %.2f %.2f %.2f",
                         name, data.x, data.y, data.z
                     );
-                    dispatcher.execute(simpleCommand, server.getCommandSource());
+                    dispatcher.execute(simpleCommand, server.getSharedSuggestionProvider());
                     bots.add(name);
                     botDataMap.put(name, data);
                     success = true;
@@ -195,7 +194,7 @@ public class BotManager {
         int skipped = 0;
         int missing = 0;
         for (String name : bots) {
-            ServerPlayerEntity bot = server.getPlayerManager().getPlayer(name);
+            ServerPlayer bot = server.getPlayerList().getPlayerByName(name);
             if (bot != null && bot.isAlive()) {
 
                 botDataMap.put(name, new BotData(bot));
@@ -280,10 +279,9 @@ public class BotManager {
     }
 
 
-    public static boolean spawnBot(MinecraftServer server, String name, ServerCommandSource source) {
-        boolean isNewBot = !bots.contains(name);
+    public static boolean spawnBot(MinecraftServer server, String name, CommandSourceStack source) {
 
-        ServerPlayerEntity existingPlayer = server.getPlayerManager().getPlayer(name);
+        ServerPlayer existingPlayer = server.getPlayerList().getPlayerByName(name);
         if (existingPlayer != null && existingPlayer.isAlive()) {
 
             if (!bots.contains(name)) {
@@ -296,7 +294,7 @@ public class BotManager {
         }
 
 
-        var dispatcher = server.getCommandManager().getDispatcher();
+        var dispatcher = server.getCommands().getDispatcher();
         try {
 
             dispatcher.execute("playerspawn " + name + " at ~ ~ ~ facing 0 0 in survival", source);
@@ -305,7 +303,7 @@ public class BotManager {
             try {
                 dispatcher.execute("playerspawn " + name, source);
 
-                dispatcher.execute("gamemode survival " + name, server.getCommandSource());
+                dispatcher.execute("gamemode survival " + name, server.getSharedSuggestionProvider());
             } catch (Exception e2) {
 
             }
@@ -314,7 +312,7 @@ public class BotManager {
 
 
         server.execute(() -> {
-            ServerPlayerEntity newBot = server.getPlayerManager().getPlayer(name);
+            ServerPlayer newBot = server.getPlayerList().getPlayerByName(name);
             if (newBot != null && !bots.contains(name)) {
                 bots.add(name);
                 botDataMap.put(name, new BotData(newBot));
@@ -337,7 +335,7 @@ public class BotManager {
         });
         
 
-        ServerPlayerEntity newBot = server.getPlayerManager().getPlayer(name);
+        ServerPlayer newBot = server.getPlayerList().getPlayerByName(name);
         if (newBot != null) {
             if (!bots.contains(name)) {
                 bots.add(name);
@@ -366,7 +364,7 @@ public class BotManager {
             defaultData.z = source.getPosition().z;
             defaultData.yaw = source.getRotation().y;
             defaultData.pitch = source.getRotation().x;
-            defaultData.dimension = source.getWorld().getRegistryKey().getValue().toString();
+            defaultData.dimension = source.getLevel().dimension().location().toString();
             defaultData.gamemode = "survival";
             botDataMap.put(name, defaultData);
             incrementBotsSpawned();
@@ -377,7 +375,7 @@ public class BotManager {
         return true;
     }
 
-    public static boolean removeBot(MinecraftServer server, String name, ServerCommandSource source) {
+    public static boolean removeBot(MinecraftServer server, String name, CommandSourceStack source) {
 
         boolean wasInList = bots.remove(name);
         botDataMap.remove(name);
@@ -398,7 +396,7 @@ public class BotManager {
         }
 
         String command = "player " + name + " kill";
-        var dispatcher = server.getCommandManager().getDispatcher();
+        var dispatcher = server.getCommands().getDispatcher();
         try {
             dispatcher.execute(command, source);
         } catch (Exception e) {
@@ -410,16 +408,18 @@ public class BotManager {
         return wasInList;
     }
 
-    public static ServerPlayerEntity getBot(MinecraftServer server, String name) {
-        return server.getPlayerManager().getPlayer(name);
+    public static ServerPlayer getBot(MinecraftServer server, String name) {
+        if (server == null) return null;
+        return server.getPlayerList().getPlayerByName(name);
     }
 
-    public static void removeAllBots(MinecraftServer server, ServerCommandSource source) {
-        var dispatcher = server.getCommandManager().getDispatcher();
+    public static void removeAllBots(MinecraftServer server, CommandSourceStack source) {
+        var dispatcher = server.getCommands().getDispatcher();
         for (String name : new HashSet<>(bots)) {
 
             BotCombat.removeState(name);
             BotUtils.removeState(name);
+            BotNavigation.removeState(name);
             BotNavigation.resetIdle(name);
             BotBaritone.removeBaritone(name);
             BotMovement.clearState(name);
@@ -457,7 +457,7 @@ public class BotManager {
     public static void cleanupDeadBots(MinecraftServer server) {
         boolean changed = false;
         for (String name : new HashSet<>(bots)) {
-            ServerPlayerEntity bot = server.getPlayerManager().getPlayer(name);
+            ServerPlayer bot = server.getPlayerList().getPlayerByName(name);
             
 
 
@@ -480,8 +480,10 @@ public class BotManager {
                 botDataMap.remove(name);
                 BotCombat.removeState(name);
                 BotUtils.removeState(name);
+                BotNavigation.removeState(name);
                 BotNavigation.resetIdle(name);
                 BotBaritone.removeBaritone(name);
+                BotMovement.clearState(name);
                 
 
                 try {
@@ -504,7 +506,7 @@ public class BotManager {
     public static void syncBots(MinecraftServer server) {
         boolean changed = false;
 
-        for (var player : server.getPlayerManager().getPlayerList()) {
+        for (var player : server.getPlayerList().getPlayers()) {
             String name = player.getName().getString();
             
 
@@ -537,7 +539,7 @@ public class BotManager {
         }
         
 
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(name);
+        ServerPlayer player = server.getPlayerList().getPlayerByName(name);
         if (player == null) {
             return false;
         }

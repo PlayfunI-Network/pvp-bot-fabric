@@ -1,13 +1,13 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.*;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.*;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Hand;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +39,7 @@ public class BotUtils {
         public boolean isEscapingCobweb = false;
         public int cobwebEscapeTicks = 0;
         public int cobwebEscapeSlot = -1;
-        public net.minecraft.util.math.BlockPos waterPosition = null;
+        public net.minecraft.core.BlockPos waterPosition = null;
         public boolean needsToCollectWater = false;
     }
     
@@ -52,7 +52,7 @@ public class BotUtils {
     }
     
     
-    public static void update(ServerPlayerEntity bot, MinecraftServer server) {
+    public static void update(ServerPlayer bot, MinecraftServer server) {
         BotSettings settings = BotSettings.get();
         BotState state = getState(bot.getName().getString());
         
@@ -76,7 +76,7 @@ public class BotUtils {
         if (state.isThrowingPotion) {
             state.throwingPotionTicks++;
 
-            bot.setPitch(90);
+            bot.setXRot(90);
             
             if (state.throwingPotionTicks == 2) {
 
@@ -90,10 +90,10 @@ public class BotUtils {
                     
 
                     if (nextSlot >= 9) {
-                        ItemStack potion = inventory.getStack(nextSlot);
-                        ItemStack current = inventory.getStack(8);
-                        inventory.setStack(nextSlot, current);
-                        inventory.setStack(8, potion);
+                        ItemStack potion = inventory.getItem(nextSlot);
+                        ItemStack current = inventory.getItem(8);
+                        inventory.setItem(nextSlot, current);
+                        inventory.setItem(8, potion);
                         nextSlot = 8;
                     }
                     
@@ -134,27 +134,27 @@ public class BotUtils {
     }
     
     
-    private static void handleSwimming(ServerPlayerEntity bot) {
-        if (bot.isTouchingWater() || bot.isSubmergedInWater()) {
+    private static void handleSwimming(ServerPlayer bot) {
+        if (bot.isInWater() || bot.isUnderWater()) {
             bot.setSwimming(true);
             
 
-            if (bot.isSubmergedInWater()) {
-                bot.addVelocity(0, 0.08, 0);
+            if (bot.isUnderWater()) {
+                bot.push(0, 0.08, 0);
                 bot.setSprinting(true);
-            } else if (bot.isTouchingWater()) {
-                bot.addVelocity(0, 0.04, 0);
+            } else if (bot.isInWater()) {
+                bot.push(0, 0.04, 0);
             }
             
 
-            if (bot.isOnGround() && bot.isTouchingWater()) {
+            if (bot.isOnGround() && bot.isInWater()) {
                 bot.jump();
             }
         }
     }
     
     
-    private static void handleAutoTotem(ServerPlayerEntity bot) {
+    private static void handleAutoTotem(ServerPlayer bot) {
         BotState state = getState(bot.getName().getString());
         
 
@@ -163,22 +163,22 @@ public class BotUtils {
         }
         
         var inventory = bot.getInventory();
-        ItemStack offhand = inventory.getStack(40);
+        ItemStack offhand = inventory.getItem(40);
         
         if (offhand.getItem() == Items.TOTEM_OF_UNDYING) return;
         
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.TOTEM_OF_UNDYING) {
-                inventory.setStack(i, offhand.copy());
-                inventory.setStack(40, stack.copy());
+                inventory.setItem(i, offhand.copy());
+                inventory.setItem(40, stack.copy());
                 return;
             }
         }
     }
     
     
-    private static void handleAutoBuffPotions(ServerPlayerEntity bot, BotState state, MinecraftServer server) {
+    private static void handleAutoBuffPotions(ServerPlayer bot, BotState state, MinecraftServer server) {
 
         var combatState = BotCombat.getState(bot.getName().getString());
         if (combatState.target == null) return;
@@ -192,9 +192,9 @@ public class BotUtils {
         java.util.List<Integer> potionsToUse = new java.util.ArrayList<>();
         
 
-        boolean needStrength = !hasEffect(bot, StatusEffects.STRENGTH, 100);
-        boolean needSpeed = !hasEffect(bot, StatusEffects.SPEED, 100);
-        boolean needFireResist = !hasEffect(bot, StatusEffects.FIRE_RESISTANCE, 100);
+        boolean needStrength = !hasEffect(bot, MobEffects.STRENGTH, 100);
+        boolean needSpeed = !hasEffect(bot, MobEffects.SPEED, 100);
+        boolean needFireResist = !hasEffect(bot, MobEffects.FIRE_RESISTANCE, 100);
         
         if (needStrength) {
             int slot = findSplashBuffPotion(inventory, "strength");
@@ -219,10 +219,10 @@ public class BotUtils {
             
 
             if (firstSlot >= 9) {
-                ItemStack potion = inventory.getStack(firstSlot);
-                ItemStack current = inventory.getStack(8);
-                inventory.setStack(firstSlot, current);
-                inventory.setStack(8, potion);
+                ItemStack potion = inventory.getItem(firstSlot);
+                ItemStack current = inventory.getItem(8);
+                inventory.setItem(firstSlot, current);
+                inventory.setItem(8, potion);
                 firstSlot = 8;
             }
             
@@ -240,9 +240,9 @@ public class BotUtils {
     }
     
     
-    private static int findSplashBuffPotion(net.minecraft.entity.player.PlayerInventory inventory, String effectName) {
+    private static int findSplashBuffPotion(net.minecraft.world.entity.player.Inventory inventory, String effectName) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
             
             Item item = stack.getItem();
@@ -251,13 +251,13 @@ public class BotUtils {
                 continue;
             }
             
-            var potionContents = stack.get(DataComponentTypes.POTION_CONTENTS);
+            var potionContents = stack.get(DataComponents.POTION_CONTENTS);
             if (potionContents == null) continue;
             
 
             var potion = potionContents.potion();
             if (potion.isPresent()) {
-                String potionName = potion.get().getIdAsString().toLowerCase();
+                String potionName = net.minecraft.core.registries.BuiltInRegistries.POTION.getKey(potion.get().value()).getPath().toLowerCase();
                 if (potionName.contains(effectName)) {
                     return i;
                 }
@@ -267,16 +267,16 @@ public class BotUtils {
     }
     
     
-    private static boolean hasEffect(ServerPlayerEntity bot, net.minecraft.registry.entry.RegistryEntry<net.minecraft.entity.effect.StatusEffect> effect, int minDuration) {
-        var instance = bot.getStatusEffect(effect);
+    private static boolean hasEffect(ServerPlayer bot, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, int minDuration) {
+        var instance = bot.getEffect(effect);
         if (instance == null) return false;
         return instance.getDuration() > minDuration;
     }
     
     
-    private static int findBuffPotion(net.minecraft.entity.player.PlayerInventory inventory, String effectName) {
+    private static int findBuffPotion(net.minecraft.world.entity.player.Inventory inventory, String effectName) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
             
             Item item = stack.getItem();
@@ -284,13 +284,13 @@ public class BotUtils {
                 continue;
             }
             
-            var potionContents = stack.get(DataComponentTypes.POTION_CONTENTS);
+            var potionContents = stack.get(DataComponents.POTION_CONTENTS);
             if (potionContents == null) continue;
             
 
             var potion = potionContents.potion();
             if (potion.isPresent()) {
-                String potionName = potion.get().getIdAsString().toLowerCase();
+                String potionName = net.minecraft.core.registries.BuiltInRegistries.POTION.getKey(potion.get().value()).getPath().toLowerCase();
                 if (potionName.contains(effectName)) {
                     return i;
                 }
@@ -300,16 +300,16 @@ public class BotUtils {
     }
     
     
-    private static boolean useBuffPotion(ServerPlayerEntity bot, BotState state, int slot, MinecraftServer server) {
+    private static boolean useBuffPotion(ServerPlayer bot, BotState state, int slot, MinecraftServer server) {
         var inventory = bot.getInventory();
-        ItemStack potionStack = inventory.getStack(slot);
+        ItemStack potionStack = inventory.getItem(slot);
         Item potionItem = potionStack.getItem();
         
 
         if (slot >= 9) {
-            ItemStack current = inventory.getStack(8);
-            inventory.setStack(slot, current);
-            inventory.setStack(8, potionStack);
+            ItemStack current = inventory.getItem(8);
+            inventory.setItem(slot, current);
+            inventory.setItem(8, potionStack);
             slot = 8;
         }
         
@@ -328,7 +328,7 @@ public class BotUtils {
             state.eatingTicks = 0;
             state.eatingSlot = slot;
             state.buffPotionCooldown = 10;
-            bot.setCurrentHand(Hand.MAIN_HAND);
+            bot.startUsingItem(InteractionHand.MAIN_HAND);
             return true;
         }
         
@@ -336,7 +336,7 @@ public class BotUtils {
     }
     
     
-    private static void handleAutoEat(ServerPlayerEntity bot, BotState state, BotSettings settings, MinecraftServer server) {
+    private static void handleAutoEat(ServerPlayer bot, BotState state, BotSettings settings, MinecraftServer server) {
 
         if (!settings.isAutoEatEnabled()) {
             if (state.isEating) {
@@ -348,7 +348,7 @@ public class BotUtils {
             return;
         }
         
-        int hunger = bot.getHungerManager().getFoodLevel();
+        int hunger = bot.getFoodData().getFoodLevel();
         float health = bot.getHealth();
         float maxHealth = bot.getMaxHealth();
         
@@ -369,10 +369,10 @@ public class BotUtils {
             }
             
 
-            ItemStack foodStack = bot.getMainHandStack();
-            if (foodStack.getItem().getComponents().get(DataComponentTypes.FOOD) != null) {
+            ItemStack foodStack = bot.getMainHandItem();
+            if (foodStack.getItem().getComponents().get(DataComponents.FOOD) != null) {
 
-                bot.setCurrentHand(Hand.MAIN_HAND);
+                bot.startUsingItem(InteractionHand.MAIN_HAND);
             }
             
 
@@ -384,7 +384,7 @@ public class BotUtils {
                 state.eatCooldown = 10;
                 
 
-                hunger = bot.getHungerManager().getFoodLevel();
+                hunger = bot.getFoodData().getFoodLevel();
                 health = bot.getHealth();
                 if (health <= maxHealth * 0.5f || hunger < 18) {
                     state.eatCooldown = 0;
@@ -407,14 +407,14 @@ public class BotUtils {
                 var inventory = bot.getInventory();
                 
 
-                ItemStack foodStack = inventory.getStack(foodSlot);
-                if (!foodStack.isEmpty() && foodStack.getItem().getComponents().get(DataComponentTypes.FOOD) != null) {
+                ItemStack foodStack = inventory.getItem(foodSlot);
+                if (!foodStack.isEmpty() && foodStack.getItem().getComponents().get(DataComponents.FOOD) != null) {
 
                     if (foodSlot >= 9) {
-                        ItemStack food = inventory.getStack(foodSlot);
-                        ItemStack current = inventory.getStack(8);
-                        inventory.setStack(foodSlot, current);
-                        inventory.setStack(8, food);
+                        ItemStack food = inventory.getItem(foodSlot);
+                        ItemStack current = inventory.getItem(8);
+                        inventory.setItem(foodSlot, current);
+                        inventory.setItem(8, food);
                         foodSlot = 8;
                     }
                     
@@ -433,9 +433,9 @@ public class BotUtils {
     }
     
     
-    private static boolean hasGoldenApple(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static boolean hasGoldenApple(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            Item item = inventory.getStack(i).getItem();
+            Item item = inventory.getItem(i).getItem();
             if (item == Items.GOLDEN_APPLE || item == Items.ENCHANTED_GOLDEN_APPLE) {
                 return true;
             }
@@ -444,12 +444,12 @@ public class BotUtils {
     }
 
     
-    private static int findBestFood(net.minecraft.entity.player.PlayerInventory inventory, boolean preferGoldenApple) {
+    private static int findBestFood(net.minecraft.world.entity.player.Inventory inventory, boolean preferGoldenApple) {
         int bestSlot = -1;
         int bestValue = 0;
         
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
             
             int value = getFoodValue(stack.getItem(), preferGoldenApple);
@@ -478,7 +478,7 @@ public class BotUtils {
         if (item == Items.APPLE) return 30;
         if (item == Items.CARROT) return 25;
         
-        var foodComponent = item.getComponents().get(DataComponentTypes.FOOD);
+        var foodComponent = item.getComponents().get(DataComponents.FOOD);
         if (foodComponent != null) {
             return foodComponent.nutrition() * 5;
         }
@@ -486,7 +486,7 @@ public class BotUtils {
     }
     
     
-    private static void handleAutoShield(ServerPlayerEntity bot, BotState state, BotSettings settings, MinecraftServer server) {
+    private static void handleAutoShield(ServerPlayer bot, BotState state, BotSettings settings, MinecraftServer server) {
         var inventory = bot.getInventory();
         int shieldSlot = findShield(inventory);
         if (shieldSlot < 0) {
@@ -496,7 +496,7 @@ public class BotUtils {
         
 
         if (settings.isTotemPriority()) {
-            ItemStack offhand = inventory.getStack(40);
+            ItemStack offhand = inventory.getItem(40);
             if (offhand.getItem() == Items.TOTEM_OF_UNDYING) {
 
                 if (state.isBlocking) {
@@ -535,7 +535,7 @@ public class BotUtils {
         
         if (distance <= 4.0) {
 
-            if (target instanceof PlayerEntity player && player.handSwinging) {
+            if (target instanceof Player player && player.swinging) {
                 shouldBlock = true;
             }
 
@@ -557,19 +557,19 @@ public class BotUtils {
         }
     }
     
-    private static void startBlocking(ServerPlayerEntity bot, BotState state, int shieldSlot, MinecraftServer server) {
+    private static void startBlocking(ServerPlayer bot, BotState state, int shieldSlot, MinecraftServer server) {
         var inventory = bot.getInventory();
         
         if (shieldSlot != 40) {
-            ItemStack shield = inventory.getStack(shieldSlot);
-            ItemStack offhand = inventory.getStack(40);
+            ItemStack shield = inventory.getItem(shieldSlot);
+            ItemStack offhand = inventory.getItem(40);
             
 
             state.savedOffhandItem = offhand.copy();
             
 
-            inventory.setStack(shieldSlot, offhand);
-            inventory.setStack(40, shield);
+            inventory.setItem(shieldSlot, offhand);
+            inventory.setItem(40, shield);
         }
         
 
@@ -577,19 +577,19 @@ public class BotUtils {
         state.isBlocking = true;
     }
     
-    private static void stopBlocking(ServerPlayerEntity bot, BotState state, MinecraftServer server) {
+    private static void stopBlocking(ServerPlayer bot, BotState state, MinecraftServer server) {
         executeCommand(server, bot, "player " + bot.getName().getString() + " stop");
         state.isBlocking = false;
         
         var inventory = bot.getInventory();
-        ItemStack currentOffhand = inventory.getStack(40);
+        ItemStack currentOffhand = inventory.getItem(40);
         
 
         if (currentOffhand.getItem() == Items.SHIELD && !state.savedOffhandItem.isEmpty()) {
 
             int emptySlot = -1;
             for (int i = 0; i < 36; i++) {
-                if (inventory.getStack(i).isEmpty()) {
+                if (inventory.getItem(i).isEmpty()) {
                     emptySlot = i;
                     break;
                 }
@@ -597,9 +597,9 @@ public class BotUtils {
             
             if (emptySlot >= 0) {
 
-                inventory.setStack(emptySlot, currentOffhand.copy());
+                inventory.setItem(emptySlot, currentOffhand.copy());
 
-                inventory.setStack(40, state.savedOffhandItem.copy());
+                inventory.setItem(40, state.savedOffhandItem.copy());
             }
             
 
@@ -607,16 +607,16 @@ public class BotUtils {
         }
     }
     
-    private static int findShield(net.minecraft.entity.player.PlayerInventory inventory) {
-        if (inventory.getStack(40).getItem() == Items.SHIELD) return 40;
+    private static int findShield(net.minecraft.world.entity.player.Inventory inventory) {
+        if (inventory.getItem(40).getItem() == Items.SHIELD) return 40;
         for (int i = 0; i < 36; i++) {
-            if (inventory.getStack(i).getItem() == Items.SHIELD) return i;
+            if (inventory.getItem(i).getItem() == Items.SHIELD) return i;
         }
         return -1;
     }
     
     
-    public static void useWindCharge(ServerPlayerEntity bot, MinecraftServer server) {
+    public static void useWindCharge(ServerPlayer bot, MinecraftServer server) {
         BotState state = getState(bot.getName().getString());
         if (state.windChargeCooldown > 0) return;
         if (state.isEating) return;
@@ -627,17 +627,17 @@ public class BotUtils {
         
 
         if (slot >= 9) {
-            ItemStack wc = inventory.getStack(slot);
-            ItemStack current = inventory.getStack(0);
-            inventory.setStack(slot, current);
-            inventory.setStack(0, wc);
+            ItemStack wc = inventory.getItem(slot);
+            ItemStack current = inventory.getItem(0);
+            inventory.setItem(slot, current);
+            inventory.setItem(0, wc);
             slot = 0;
         }
         
         org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(inventory, slot);
         
 
-        bot.setPitch(90);
+        bot.setXRot(90);
         
 
         executeCommand(server, bot, "player " + bot.getName().getString() + " use once");
@@ -645,20 +645,20 @@ public class BotUtils {
         state.windChargeCooldown = 20;
     }
     
-    private static int findWindCharge(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findWindCharge(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            if (inventory.getStack(i).getItem() == Items.WIND_CHARGE) return i;
+            if (inventory.getItem(i).getItem() == Items.WIND_CHARGE) return i;
         }
         return -1;
     }
     
     
-    public static boolean tryDisableShield(ServerPlayerEntity bot, Entity target) {
+    public static boolean tryDisableShield(ServerPlayer bot, Entity target) {
 
         BotState state = getState(bot.getName().getString());
         if (state.isEating) return false;
         
-        if (!(target instanceof PlayerEntity player)) return false;
+        if (!(target instanceof Player player)) return false;
         if (!player.isBlocking()) return false;
         
         var inventory = bot.getInventory();
@@ -666,10 +666,10 @@ public class BotUtils {
         if (axeSlot < 0) return false;
         
         if (axeSlot >= 9) {
-            ItemStack axe = inventory.getStack(axeSlot);
-            ItemStack current = inventory.getStack(0);
-            inventory.setStack(axeSlot, current);
-            inventory.setStack(0, axe);
+            ItemStack axe = inventory.getItem(axeSlot);
+            ItemStack current = inventory.getItem(0);
+            inventory.setItem(axeSlot, current);
+            inventory.setItem(0, axe);
             org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(inventory, 0);
         } else {
             org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(inventory, axeSlot);
@@ -677,10 +677,10 @@ public class BotUtils {
         return true;
     }
     
-    private static int findAxe(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findAxe(net.minecraft.world.entity.player.Inventory inventory) {
         int[] priorities = {-1, -1, -1, -1, -1, -1};
         for (int i = 0; i < 36; i++) {
-            Item item = inventory.getStack(i).getItem();
+            Item item = inventory.getItem(i).getItem();
             if (item == Items.NETHERITE_AXE) priorities[0] = i;
             else if (item == Items.DIAMOND_AXE) priorities[1] = i;
             else if (item == Items.IRON_AXE) priorities[2] = i;
@@ -695,21 +695,21 @@ public class BotUtils {
     }
     
     
-    private static void executeCommand(MinecraftServer server, ServerPlayerEntity bot, String command) {
+    private static void executeCommand(MinecraftServer server, ServerPlayer bot, String command) {
         try {
-            server.getCommandManager().getDispatcher().execute(command, server.getCommandSource());
+            server.getCommands().getDispatcher().execute(command, server.getSharedSuggestionProvider());
         } catch (Exception e) {
 
         }
     }
     
     
-    public static boolean hasFood(ServerPlayerEntity bot) {
+    public static boolean hasFood(ServerPlayer bot) {
         var inventory = bot.getInventory();
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (!stack.isEmpty()) {
-                var foodComponent = stack.getItem().getComponents().get(DataComponentTypes.FOOD);
+                var foodComponent = stack.getItem().getComponents().get(DataComponents.FOOD);
                 if (foodComponent != null) {
                     return true;
                 }
@@ -719,7 +719,7 @@ public class BotUtils {
     }
     
     
-    public static boolean tryUseHealingPotion(ServerPlayerEntity bot, MinecraftServer server) {
+    public static boolean tryUseHealingPotion(ServerPlayer bot, MinecraftServer server) {
         BotState state = getState(bot.getName().getString());
         if (state.isEating) return false;
         if (state.potionCooldown > 0) return false;
@@ -730,14 +730,14 @@ public class BotUtils {
         int potionSlot = findHealingPotion(inventory);
         if (potionSlot < 0) return false;
         
-        ItemStack potionStack = inventory.getStack(potionSlot);
+        ItemStack potionStack = inventory.getItem(potionSlot);
         Item potionItem = potionStack.getItem();
         
 
         if (potionSlot >= 9) {
-            ItemStack current = inventory.getStack(8);
-            inventory.setStack(potionSlot, current);
-            inventory.setStack(8, potionStack);
+            ItemStack current = inventory.getItem(8);
+            inventory.setItem(potionSlot, current);
+            inventory.setItem(8, potionStack);
             potionSlot = 8;
         }
         
@@ -756,7 +756,7 @@ public class BotUtils {
             state.eatingTicks = 0;
             state.eatingSlot = potionSlot;
             state.potionCooldown = 5;
-            bot.setCurrentHand(Hand.MAIN_HAND);
+            bot.startUsingItem(InteractionHand.MAIN_HAND);
             return true;
         }
         
@@ -764,13 +764,13 @@ public class BotUtils {
     }
     
     
-    private static int findHealingPotion(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findHealingPotion(net.minecraft.world.entity.player.Inventory inventory) {
 
         int splashSlot = -1;
         int normalSlot = -1;
         
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
             
             Item item = stack.getItem();
@@ -791,7 +791,7 @@ public class BotUtils {
     
     
     private static boolean isHealingPotion(ItemStack stack) {
-        var potionContents = stack.get(DataComponentTypes.POTION_CONTENTS);
+        var potionContents = stack.get(DataComponents.POTION_CONTENTS);
         if (potionContents == null) return false;
         
 
@@ -806,7 +806,7 @@ public class BotUtils {
 
         var potion = potionContents.potion();
         if (potion.isPresent()) {
-            String potionName = potion.get().getIdAsString().toLowerCase();
+            String potionName = net.minecraft.core.registries.BuiltInRegistries.POTION.getKey(potion.get().value()).getPath().toLowerCase();
             if (potionName.contains("healing") || potionName.contains("health")) {
                 return true;
             }
@@ -816,7 +816,7 @@ public class BotUtils {
     }
     
     
-    private static boolean handleAutoMend(ServerPlayerEntity bot, BotState state, BotSettings settings, MinecraftServer server) {
+    private static boolean handleAutoMend(ServerPlayer bot, BotState state, BotSettings settings, MinecraftServer server) {
         var inventory = bot.getInventory();
         
 
@@ -833,7 +833,7 @@ public class BotUtils {
         int itemsNeedingRepair = 0;
         
         for (int armorSlot = 36; armorSlot < 40; armorSlot++) {
-            ItemStack armorPiece = inventory.getStack(armorSlot);
+            ItemStack armorPiece = inventory.getItem(armorSlot);
             if (armorPiece.isEmpty()) continue;
             
 
@@ -898,10 +898,10 @@ public class BotUtils {
         
 
         if (xpBottleSlot >= 9) {
-            ItemStack xpBottle = inventory.getStack(xpBottleSlot);
-            ItemStack current = inventory.getStack(8);
-            inventory.setStack(xpBottleSlot, current);
-            inventory.setStack(8, xpBottle);
+            ItemStack xpBottle = inventory.getItem(xpBottleSlot);
+            ItemStack current = inventory.getItem(8);
+            inventory.setItem(xpBottleSlot, current);
+            inventory.setItem(8, xpBottle);
             xpBottleSlot = 8;
         }
         
@@ -909,7 +909,7 @@ public class BotUtils {
         org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(inventory, xpBottleSlot);
         
 
-        bot.setPitch(90);
+        bot.setXRot(90);
         
 
         executeCommand(server, bot, "player " + bot.getName().getString() + " use once");
@@ -921,12 +921,12 @@ public class BotUtils {
     
     
     private static boolean hasMendingEnchantment(ItemStack stack) {
-        var enchantments = stack.get(DataComponentTypes.ENCHANTMENTS);
+        var enchantments = stack.get(DataComponents.ENCHANTMENTS);
         if (enchantments == null) return false;
         
 
         for (var entry : enchantments.getEnchantments()) {
-            String enchantName = entry.getIdAsString().toLowerCase();
+            String enchantName = net.minecraft.core.registries.BuiltInRegistries.ENCHANTMENT.getKey(entry.value()).getPath().toLowerCase();
             if (enchantName.contains("mending")) {
                 return true;
             }
@@ -935,9 +935,9 @@ public class BotUtils {
     }
     
     
-    private static int findXpBottle(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findXpBottle(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            if (inventory.getStack(i).getItem() == Items.EXPERIENCE_BOTTLE) {
+            if (inventory.getItem(i).getItem() == Items.EXPERIENCE_BOTTLE) {
                 return i;
             }
         }
@@ -945,29 +945,29 @@ public class BotUtils {
     }
     
     
-    public static void handleCobwebEscape(ServerPlayerEntity bot, BotState state, MinecraftServer server) {
-        boolean inCobweb = bot.getEntityWorld().getBlockState(bot.getBlockPos()).getBlock() == net.minecraft.block.Blocks.COBWEB;
+    public static void handleCobwebEscape(ServerPlayer bot, BotState state, MinecraftServer server) {
+        boolean inCobweb = bot.level().getBlockState(bot.blockPosition()).getBlock() == net.minecraft.world.level.block.Blocks.COBWEB;
         
         if (state.needsToCollectWater && state.waterPosition != null) {
-            net.minecraft.util.math.Vec3d botPos = new net.minecraft.util.math.Vec3d(bot.getX(), bot.getY(), bot.getZ());
-            double distToWater = botPos.distanceTo(net.minecraft.util.math.Vec3d.ofCenter(state.waterPosition));
+            net.minecraft.world.phys.Vec3 botPos = new net.minecraft.world.phys.Vec3(bot.getX(), bot.getY(), bot.getZ());
+            double distToWater = botPos.distanceTo(net.minecraft.world.phys.Vec3.ofCenter(state.waterPosition));
             
             System.out.println("[COBWEB] Returning for water. Distance: " + distToWater + ", Position: " + state.waterPosition);
             
             if (distToWater < 1.5) {
-                net.minecraft.block.BlockState blockStateAtWater = bot.getEntityWorld().getBlockState(state.waterPosition);
-                net.minecraft.block.Block blockAtWater = blockStateAtWater.getBlock();
+                net.minecraft.world.level.block.state.BlockState blockStateAtWater = bot.level().getBlockState(state.waterPosition);
+                net.minecraft.world.level.block.Block blockAtWater = blockStateAtWater.getBlock();
                 
-                System.out.println("[COBWEB] Close to water! Block: " + blockAtWater + ", isWater: " + blockStateAtWater.isOf(net.minecraft.block.Blocks.WATER));
+                System.out.println("[COBWEB] Close to water! Block: " + blockAtWater + ", isWater: " + blockStateAtWater.is(net.minecraft.world.level.block.Blocks.WATER));
                 
-                if (blockStateAtWater.isOf(net.minecraft.block.Blocks.WATER)) {
+                if (blockStateAtWater.is(net.minecraft.world.level.block.Blocks.WATER)) {
                     System.out.println("[COBWEB] Collecting water at saved position...");
                     
                     if (state.cobwebEscapeSlot >= 0 && state.cobwebEscapeSlot < 9) {
                         org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(bot.getInventory(), state.cobwebEscapeSlot);
                     }
                     
-                    bot.setPitch(90.0f);
+                    bot.setXRot(90.0f);
                     executeCommand(server, bot, "player " + bot.getName().getString() + " use once");
                     
                     state.needsToCollectWater = false;
@@ -983,7 +983,7 @@ public class BotUtils {
                 }
             }
             
-            net.minecraft.util.math.Vec3d waterPos = net.minecraft.util.math.Vec3d.ofCenter(state.waterPosition);
+            net.minecraft.world.phys.Vec3 waterPos = net.minecraft.world.phys.Vec3.ofCenter(state.waterPosition);
             BotNavigation.lookAtPosition(bot, waterPos);
             BotNavigation.moveTowardPosition(bot, waterPos, 0.8);
             return;
@@ -993,8 +993,8 @@ public class BotUtils {
             state.cobwebEscapeTicks++;
             
 
-            bot.setPitch(90.0f);
-            bot.setVelocity(0, bot.getVelocity().y, 0);
+            bot.setXRot(90.0f);
+            bot.setDeltaMovement(0, bot.getDeltaMovement().y, 0);
             
 
             if (state.cobwebEscapeSlot >= 0 && state.cobwebEscapeSlot < 9) {
@@ -1003,14 +1003,14 @@ public class BotUtils {
             
             if (state.cobwebEscapeTicks == 5) {
 
-                net.minecraft.util.math.BlockPos waterPos = bot.getBlockPos().down();
+                net.minecraft.core.BlockPos waterPos = bot.blockPosition().below();
                 state.waterPosition = waterPos;
                 
                 System.out.println("[COBWEB] Tick 5 - Collecting water at position: " + waterPos);
                 executeCommand(server, bot, "player " + bot.getName().getString() + " use once");
                 
 
-                ItemStack currentItem = bot.getInventory().getStack(state.cobwebEscapeSlot);
+                ItemStack currentItem = bot.getInventory().getItem(state.cobwebEscapeSlot);
                 if (currentItem.getItem() != Items.WATER_BUCKET) {
                     System.out.println("[COBWEB] Water not collected, will return later. Current item: " + currentItem.getItem());
                     state.needsToCollectWater = true;
@@ -1054,10 +1054,10 @@ public class BotUtils {
         if (waterSlot >= 0) {
 
             if (waterSlot >= 9) {
-                ItemStack water = bot.getInventory().getStack(waterSlot);
-                ItemStack current = bot.getInventory().getStack(8);
-                bot.getInventory().setStack(waterSlot, current);
-                bot.getInventory().setStack(8, water);
+                ItemStack water = bot.getInventory().getItem(waterSlot);
+                ItemStack current = bot.getInventory().getItem(8);
+                bot.getInventory().setItem(waterSlot, current);
+                bot.getInventory().setItem(8, water);
                 waterSlot = 8;
             }
             
@@ -1066,16 +1066,16 @@ public class BotUtils {
             state.cobwebEscapeSlot = waterSlot;
             state.isEscapingCobweb = true;
             state.cobwebEscapeTicks = 0;
-            state.waterPosition = bot.getBlockPos().down();
+            state.waterPosition = bot.blockPosition().below();
             state.needsToCollectWater = false;
             
 
             executeCommand(server, bot, "player " + bot.getName().getString() + " stop");
-            bot.setVelocity(0, bot.getVelocity().y, 0);
+            bot.setDeltaMovement(0, bot.getDeltaMovement().y, 0);
             
 
             org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(bot.getInventory(), waterSlot);
-            bot.setPitch(90.0f);
+            bot.setXRot(90.0f);
             
 
             System.out.println("[COBWEB] Placing water at position: " + state.waterPosition);
@@ -1083,10 +1083,10 @@ public class BotUtils {
         } else if (pearlSlot >= 0) {
 
             if (pearlSlot >= 9) {
-                ItemStack pearl = bot.getInventory().getStack(pearlSlot);
-                ItemStack current = bot.getInventory().getStack(8);
-                bot.getInventory().setStack(pearlSlot, current);
-                bot.getInventory().setStack(8, pearl);
+                ItemStack pearl = bot.getInventory().getItem(pearlSlot);
+                ItemStack current = bot.getInventory().getItem(8);
+                bot.getInventory().setItem(pearlSlot, current);
+                bot.getInventory().setItem(8, pearl);
                 pearlSlot = 8;
             }
             
@@ -1096,7 +1096,7 @@ public class BotUtils {
             org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(bot.getInventory(), pearlSlot);
             
 
-            bot.setPitch(0.0f);
+            bot.setXRot(0.0f);
             
             executeCommand(server, bot, "player " + bot.getName().getString() + " use once");
             
@@ -1106,9 +1106,9 @@ public class BotUtils {
     }
     
     
-    private static int findWaterBucket(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findWaterBucket(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.WATER_BUCKET) {
                 return i;
             }
@@ -1116,9 +1116,9 @@ public class BotUtils {
         return -1;
     }
     
-    private static int findEnderPearl(net.minecraft.entity.player.PlayerInventory inventory) {
+    private static int findEnderPearl(net.minecraft.world.entity.player.Inventory inventory) {
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.getItem() == Items.ENDER_PEARL) {
                 return i;
             }
@@ -1127,7 +1127,7 @@ public class BotUtils {
     }
     
     
-    public static boolean canAttack(ServerPlayerEntity bot, BotState state) {
+    public static boolean canAttack(ServerPlayer bot, BotState state) {
 
         if (state.isEscapingCobweb || state.needsToCollectWater) {
             return false;

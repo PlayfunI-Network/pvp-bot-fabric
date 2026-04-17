@@ -1,8 +1,8 @@
 package org.stepan1411.pvp_bot.api.combat;
 
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import org.stepan1411.pvp_bot.bot.BotSettings;
 
 
@@ -15,10 +15,10 @@ public interface CombatStrategy {
     int getPriority();
     
     
-    boolean canUse(ServerPlayerEntity bot, Entity target, BotSettings settings);
+    boolean canUse(ServerPlayer bot, Entity target, BotSettings settings);
     
     
-    boolean execute(ServerPlayerEntity bot, Entity target, BotSettings settings, MinecraftServer server);
+    boolean execute(ServerPlayer bot, Entity target, BotSettings settings, MinecraftServer server);
     
     
     default int getCooldown() {

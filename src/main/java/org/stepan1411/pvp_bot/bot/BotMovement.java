@@ -1,10 +1,9 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
@@ -23,7 +22,7 @@ public class BotMovement {
     public static class MovementState {
         public MovementType type = MovementType.NONE;
         public String targetName = null;
-        public Vec3d targetPos = null;
+        public Vec3 targetPos = null;
         public boolean isEscort = false;
         public long lastUpdate = 0;
         
@@ -57,7 +56,7 @@ public class BotMovement {
     }
     
     
-    public static void setGoto(String botName, Vec3d position) {
+    public static void setGoto(String botName, Vec3 position) {
         MovementState state = getOrCreateState(botName);
         state.type = MovementType.GOTO;
         state.targetPos = position;
@@ -80,7 +79,7 @@ public class BotMovement {
 
                 for (String existingBotName : BotManager.getAllBots()) {
                     if (existingBotName.equals(botName)) {
-                        ServerPlayerEntity bot = BotManager.getBot(null, botName);
+                        ServerPlayer bot = BotManager.getBot(null, botName);
                         if (bot != null) {
 
                             if (BotBaritone.isBaritoneAvailable(bot)) {
@@ -101,7 +100,7 @@ public class BotMovement {
     }
     
     
-    public static void updateMovement(ServerPlayerEntity bot) {
+    public static void updateMovement(ServerPlayer bot) {
         String botName = bot.getName().getString();
         MovementState state = botStates.get(botName);
         
@@ -127,7 +126,7 @@ public class BotMovement {
     }
     
     
-    private static void updateFollow(ServerPlayerEntity bot, MovementState state) {
+    private static void updateFollow(ServerPlayer bot, MovementState state) {
         if (state.targetName == null) {
             return;
         }
@@ -148,7 +147,7 @@ public class BotMovement {
         
 
         if (distance > FOLLOW_DISTANCE) {
-            Vec3d targetPos = new Vec3d(target.getX(), target.getY(), target.getZ());
+            Vec3 targetPos = new Vec3(target.getX(), target.getY(), target.getZ());
             
 
             if (state.isEscort && BotSettings.get().isEscortUseBaritone()) {
@@ -176,12 +175,12 @@ public class BotMovement {
     }
     
     
-    private static void updateGoto(ServerPlayerEntity bot, MovementState state) {
+    private static void updateGoto(ServerPlayer bot, MovementState state) {
         if (state.targetPos == null) {
             return;
         }
         
-        double distance = new Vec3d(bot.getX(), bot.getY(), bot.getZ()).distanceTo(state.targetPos);
+        double distance = new Vec3(bot.getX(), bot.getY(), bot.getZ()).distanceTo(state.targetPos);
         
 
         if (distance <= GOTO_THRESHOLD) {
@@ -205,38 +204,38 @@ public class BotMovement {
     }
     
     
-    private static void moveTowardsTarget(ServerPlayerEntity bot, Vec3d targetPos) {
+    private static void moveTowardsTarget(ServerPlayer bot, Vec3 targetPos) {
 
         HerobotMovement.walkTowards(bot, targetPos);
     }
     
     
-    private static void moveWithPathfinding(ServerPlayerEntity bot, Vec3d targetPos) {
+    private static void moveWithPathfinding(ServerPlayer bot, Vec3 targetPos) {
         moveWithPathfindingToPosition(bot, targetPos, null);
     }
     
     
-    private static void moveWithPathfindingToEntity(ServerPlayerEntity bot, Entity target) {
+    private static void moveWithPathfindingToEntity(ServerPlayer bot, Entity target) {
         moveWithPathfindingToPosition(bot, null, target);
     }
     
     
-    private static void moveWithPathfindingToPosition(ServerPlayerEntity bot, Vec3d targetPos, Entity targetEntity) {
+    private static void moveWithPathfindingToPosition(ServerPlayer bot, Vec3 targetPos, Entity targetEntity) {
 
         if (!BotBaritone.isBaritoneAvailable(bot)) {
 
             if (targetPos != null) {
                 moveTowardsTarget(bot, targetPos);
             } else if (targetEntity != null) {
-                moveTowardsTarget(bot, new Vec3d(targetEntity.getX(), targetEntity.getY(), targetEntity.getZ()));
+                moveTowardsTarget(bot, new Vec3(targetEntity.getX(), targetEntity.getY(), targetEntity.getZ()));
             }
             return;
         }
         
 
-        Vec3d actualTargetPos = targetPos;
+        Vec3 actualTargetPos = targetPos;
         if (targetEntity != null) {
-            actualTargetPos = new Vec3d(targetEntity.getX(), targetEntity.getY(), targetEntity.getZ());
+            actualTargetPos = new Vec3(targetEntity.getX(), targetEntity.getY(), targetEntity.getZ());
         }
         
         if (actualTargetPos == null) {
@@ -244,7 +243,7 @@ public class BotMovement {
         }
         
 
-        Vec3d botPos = new Vec3d(bot.getX(), bot.getY(), bot.getZ());
+        Vec3 botPos = new Vec3(bot.getX(), bot.getY(), bot.getZ());
         double distance = botPos.distanceTo(actualTargetPos);
         String botName = bot.getName().getString();
         
@@ -271,7 +270,7 @@ public class BotMovement {
         }
         
 
-        if (BotSettings.get().isBhopEnabled() && distance > 3.0 && bot.isOnGround()) {
+        if (BotSettings.get().isBhopEnabled() && distance > 3.0 && bot.onGround()) {
 
             long currentTime = System.currentTimeMillis();
             Long lastBhop = bhopCooldowns.get(botName);
@@ -287,20 +286,20 @@ public class BotMovement {
     private static final Map<String, Long> bhopCooldowns = new ConcurrentHashMap<>();
     
     
-    private static boolean shouldJump(ServerPlayerEntity bot, Vec3d targetPos) {
+    private static boolean shouldJump(ServerPlayer bot, Vec3 targetPos) {
 
         return targetPos.y > bot.getY() + 0.5;
     }
     
     
-    private static Entity findTarget(ServerPlayerEntity bot, String targetName) {
+    private static Entity findTarget(ServerPlayer bot, String targetName) {
         try {
 
-            var server = bot.getCommandSource().getServer();
+            var server = bot.createCommandSourceStack().getServer();
             if (server == null) return null;
             
 
-            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if (player.getName().getString().equals(targetName)) {
                     return player;
                 }
@@ -309,7 +308,7 @@ public class BotMovement {
 
             for (String botName : BotManager.getAllBots()) {
                 if (botName.equals(targetName)) {
-                    ServerPlayerEntity targetBot = BotManager.getBot(server, botName);
+                    ServerPlayer targetBot = BotManager.getBot(server, botName);
                     if (targetBot != null) {
                         return targetBot;
                     }
@@ -323,7 +322,7 @@ public class BotMovement {
     }
     
     
-    private static void checkEscortDefense(ServerPlayerEntity bot, Entity target) {
+    private static void checkEscortDefense(ServerPlayer bot, Entity target) {
 
 
     }

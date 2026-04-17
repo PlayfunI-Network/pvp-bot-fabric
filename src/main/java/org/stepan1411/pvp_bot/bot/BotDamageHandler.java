@@ -1,40 +1,45 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import org.bukkit.craftbukkit.entity.CraftLivingEntity;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.stepan1411.pvp_bot.api.BotAPIIntegration;
 
-public class BotDamageHandler {
-    
-    public static void register() {
+public class BotDamageHandler implements Listener {
 
-        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
+    public static void register(JavaPlugin plugin) {
+        plugin.getServer().getPluginManager().registerEvents(new BotDamageHandler(), plugin);
+    }
 
-            if (entity instanceof ServerPlayerEntity player) {
-                String playerName = player.getName().getString();
-                
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = false)
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof CraftPlayer craftPlayer)) return;
+        ServerPlayer player = craftPlayer.getHandle();
+        String playerName = player.getName().getString();
 
-                if (BotManager.getAllBots().contains(playerName)) {
+        if (!BotManager.getAllBots().contains(playerName)) return;
 
-                    try {
-                        Entity attacker = source.getAttacker();
-                        boolean cancelled = org.stepan1411.pvp_bot.api.BotAPIIntegration.fireDamageEvent(player, attacker, amount);
-                        if (cancelled) {
-                            return false;
-                        }
-                    } catch (Exception e) {
-                        System.err.println("[PVP_BOT_API] Error firing damage event: " + e.getMessage());
-                    }
-                    
-
-                    BotCombat.onBotDamaged(player, source);
+        try {
+            net.minecraft.world.entity.Entity attacker = null;
+            if (event instanceof org.bukkit.event.entity.EntityDamageByEntityEvent byEntityEvent) {
+                if (byEntityEvent.getDamager() instanceof CraftLivingEntity craftAttacker) {
+                    attacker = craftAttacker.getHandle();
                 }
             }
-            
+            boolean cancelled = BotAPIIntegration.fireDamageEvent(player, attacker, (float) event.getDamage());
+            if (cancelled) {
+                event.setCancelled(true);
+                return;
+            }
+        } catch (Exception e) {
+            System.err.println("[PVP_BOT_API] Error firing damage event: " + e.getMessage());
+        }
 
-            return true;
-        });
+        BotCombat.onBotDamaged(player, null);
     }
 }

@@ -1,8 +1,8 @@
 package org.stepan1411.pvp_bot.api.combat;
 
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import org.stepan1411.pvp_bot.bot.BotSettings;
 
 import java.util.*;
@@ -80,7 +80,7 @@ public class CombatStrategyRegistry {
     }
     
     
-    public boolean executeStrategy(ServerPlayerEntity bot, Entity target, BotSettings settings, MinecraftServer server) {
+    public boolean executeStrategy(ServerPlayer bot, Entity target, BotSettings settings, MinecraftServer server) {
         String botName = bot.getName().getString();
         long currentTime = System.currentTimeMillis();
         

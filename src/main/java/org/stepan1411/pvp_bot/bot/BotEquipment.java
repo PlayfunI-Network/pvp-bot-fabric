@@ -1,16 +1,16 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.item.*;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.*;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class BotEquipment {
 
-    public static void autoEquip(ServerPlayerEntity bot) {
+    public static void autoEquip(ServerPlayer bot) {
 
         var utilsState = BotUtils.getState(bot.getName().getString());
         if (utilsState.isEating) {
@@ -27,14 +27,14 @@ public class BotEquipment {
         }
     }
 
-    private static void equipBestArmor(ServerPlayerEntity bot) {
+    private static void equipBestArmor(ServerPlayer bot) {
         equipBestForSlot(bot, EquipmentSlot.HEAD);
         equipBestForSlot(bot, EquipmentSlot.CHEST);
         equipBestForSlot(bot, EquipmentSlot.LEGS);
         equipBestForSlot(bot, EquipmentSlot.FEET);
     }
 
-    private static void equipBestForSlot(ServerPlayerEntity bot, EquipmentSlot slot) {
+    private static void equipBestForSlot(ServerPlayer bot, EquipmentSlot slot) {
         BotSettings settings = BotSettings.get();
         var inventory = bot.getInventory();
         
@@ -47,7 +47,7 @@ public class BotEquipment {
         
 
         for (int i = 0; i < inventory.size(); i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
             if (!isArmorForSlot(stack.getItem(), slot)) continue;
             
@@ -60,16 +60,16 @@ public class BotEquipment {
         
 
         if (bestInvSlot >= 0) {
-            ItemStack newArmor = inventory.getStack(bestInvSlot).copy();
+            ItemStack newArmor = inventory.getItem(bestInvSlot).copy();
             ItemStack oldArmor = currentArmor.copy();
             
 
             bot.equipStack(slot, newArmor);
-            inventory.setStack(bestInvSlot, ItemStack.EMPTY);
+            inventory.setItem(bestInvSlot, ItemStack.EMPTY);
             
 
             if (!oldArmor.isEmpty()) {
-                inventory.setStack(bestInvSlot, oldArmor);
+                inventory.setItem(bestInvSlot, oldArmor);
             }
             
             currentArmor = newArmor;
@@ -80,7 +80,7 @@ public class BotEquipment {
 
         if (settings.isDropWorseArmor()) {
             for (int i = 0; i < inventory.size(); i++) {
-                ItemStack stack = inventory.getStack(i);
+                ItemStack stack = inventory.getItem(i);
                 if (stack.isEmpty()) continue;
                 if (!isArmorForSlot(stack.getItem(), slot)) continue;
                 
@@ -89,29 +89,29 @@ public class BotEquipment {
 
                 if (value < currentValue) {
                     dropItemBackward(bot, stack);
-                    inventory.setStack(i, ItemStack.EMPTY);
+                    inventory.setItem(i, ItemStack.EMPTY);
                 }
             }
         }
     }
 
     
-    private static void dropItemBackward(ServerPlayerEntity bot, ItemStack stack) {
+    private static void dropItemBackward(ServerPlayer bot, ItemStack stack) {
         if (stack.isEmpty()) return;
         
         BotSettings settings = BotSettings.get();
         double distance = settings.getDropDistance();
         
 
-        float oldYaw = bot.getYaw();
-        float oldHeadYaw = bot.getHeadYaw();
+        float oldYaw = bot.getYRot();
+        float oldHeadYaw = bot.getYHeadRot();
         
 
         float turnAngle = 90 + (float)(Math.random() * 180);
         float newYaw = oldYaw + turnAngle;
         
-        bot.setYaw(newYaw);
-        bot.setHeadYaw(newYaw);
+        bot.setYRot(newYaw);
+        bot.setYHeadRot(newYaw);
         
 
         ItemEntity dropped = bot.dropItem(stack.copy(), false, true);
@@ -120,7 +120,7 @@ public class BotEquipment {
 
             double yawRad = Math.toRadians(newYaw);
             double speed = 0.3 * distance;
-            dropped.setVelocity(
+            dropped.setDeltaMovement(
                 -Math.sin(yawRad) * speed,
                 0.2,
                 Math.cos(yawRad) * speed
@@ -129,8 +129,8 @@ public class BotEquipment {
         }
         
 
-        bot.setYaw(oldYaw);
-        bot.setHeadYaw(oldHeadYaw);
+        bot.setYRot(oldYaw);
+        bot.setYHeadRot(oldHeadYaw);
     }
 
     private static boolean isArmorForSlot(Item item, EquipmentSlot slot) {
@@ -176,7 +176,7 @@ public class BotEquipment {
     }
 
 
-    private static void equipBestWeapon(ServerPlayerEntity bot) {
+    private static void equipBestWeapon(ServerPlayer bot) {
         BotSettings settings = BotSettings.get();
         var inventory = bot.getInventory();
         
@@ -185,7 +185,7 @@ public class BotEquipment {
         double bestScore = 0;
         
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) continue;
             
             double score = getWeaponScore(stack, settings.isPreferSword());
@@ -199,10 +199,10 @@ public class BotEquipment {
         if (bestSlotIndex >= 0) {
             if (bestSlotIndex >= 9) {
 
-                ItemStack weapon = inventory.getStack(bestSlotIndex);
-                ItemStack slot0 = inventory.getStack(0);
-                inventory.setStack(bestSlotIndex, slot0);
-                inventory.setStack(0, weapon);
+                ItemStack weapon = inventory.getItem(bestSlotIndex);
+                ItemStack slot0 = inventory.getItem(0);
+                inventory.setItem(bestSlotIndex, slot0);
+                inventory.setItem(0, weapon);
                 bestSlotIndex = 0;
             }
             org.stepan1411.pvp_bot.utils.InventoryHelper.setSelectedSlot(inventory, bestSlotIndex);
@@ -213,13 +213,13 @@ public class BotEquipment {
             for (int i = 0; i < 36; i++) {
                 if (i == bestSlotIndex) continue;
                 
-                ItemStack stack = inventory.getStack(i);
+                ItemStack stack = inventory.getItem(i);
                 if (stack.isEmpty()) continue;
                 
                 double score = getWeaponScore(stack, settings.isPreferSword());
                 if (score > 0 && score < bestScore) {
                     dropItemBackward(bot, stack);
-                    inventory.setStack(i, ItemStack.EMPTY);
+                    inventory.setItem(i, ItemStack.EMPTY);
                 }
             }
         }

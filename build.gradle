@@ -1,5 +1,6 @@
 plugins {
-    id 'fabric-loom' version '1.13-SNAPSHOT'
+    id 'java'
+    id 'io.papermc.paperweight.userdev' version '2.0.0-beta.14'
     id 'maven-publish'
 }
 
@@ -10,55 +11,19 @@ base {
     archivesName = project.archives_base_name
 }
 
-loom {
-    splitEnvironmentSourceSets()
-
-    mods {
-        "pvp_bot" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.client
-        }
-    }
-}
-
 repositories {
-    maven { url 'https://maven.nucleoid.xyz' }
-    maven { url 'https://jitpack.io' } // HeroBot
+    mavenCentral()
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    
-    // sgui для GUI настроек
-    modImplementation include("eu.pb4:sgui:1.12.0+1.21.11")
-    
-    // Baritone API - только для компиляции, используем для расчёта путей
-    // Не включаем в мод, чтобы избежать конфликтов версий
-    compileOnly files("libs/baritone-api-fabric-1.11.2.jar")
-    
-    // HeroBot - required dependency for bot spawning and movement
-    // User must install HeroBot separately, we detect it at runtime
-    // No compile-time dependency needed since we use reflection
-}
-
-processResources {
-    inputs.property "version", project.version
-    filteringCharset "UTF-8"
-
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version
-    }
+    paperweight.paperDevBundle("${project.minecraft_version}-R0.1-SNAPSHOT")
+    implementation 'com.google.code.gson:gson:2.10.1'
 }
 
 def targetJavaVersion = 21
 tasks.withType(JavaCompile).configureEach {
-    it.options.encoding = "UTF-8"
-    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
-        it.options.release.set(targetJavaVersion)
-    }
+    it.options.encoding = 'UTF-8'
+    it.options.release.set(targetJavaVersion)
 }
 
 java {
@@ -70,8 +35,8 @@ java {
 }
 
 jar {
-    from("LICENSE") {
-        rename { "${it}_${project.base.archivesName.get()}"}
+    from('LICENSE') {
+        rename { "${it}_${project.base.archivesName.get()}" }
     }
 }
 
@@ -79,15 +44,12 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            
             groupId = project.maven_group
             artifactId = project.archives_base_name
             version = project.mod_version
         }
     }
-    
     repositories {
-        // Для локальной публикации
         mavenLocal()
     }
 }

@@ -1,7 +1,7 @@
 package org.stepan1411.pvp_bot.bot;
 
-import net.minecraft.particle.DustParticleEffect;
-import net.minecraft.particle.ParticleTypes;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
@@ -96,7 +96,7 @@ public class BotPathVisualizer {
         int particleCount = (int) (distance * 2);
         
 
-        DustParticleEffect greenDust = new DustParticleEffect(COLOR_GREEN, 1.0f);
+        DustParticleOptions greenDust = new DustParticleOptions(new org.joml.Vector3f(0.0f, 1.0f, 0.0f), 1.0f);
         
         for (int i = 0; i <= particleCount; i++) {
             double t = (double) i / particleCount;

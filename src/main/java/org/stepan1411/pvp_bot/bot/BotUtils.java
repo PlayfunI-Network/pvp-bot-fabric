@@ -958,9 +958,9 @@ public class BotUtils {
                 net.minecraft.world.level.block.state.BlockState blockStateAtWater = bot.level().getBlockState(state.waterPosition);
                 net.minecraft.world.level.block.Block blockAtWater = blockStateAtWater.getBlock();
                 
-                System.out.println("[COBWEB] Close to water! Block: " + blockAtWater + ", isWater: " + blockStateAtWater.isOf(net.minecraft.world.level.block.Blocks.WATER));
+                System.out.println("[COBWEB] Close to water! Block: " + blockAtWater + ", isWater: " + blockStateAtWater.is(net.minecraft.world.level.block.Blocks.WATER));
                 
-                if (blockStateAtWater.isOf(net.minecraft.world.level.block.Blocks.WATER)) {
+                if (blockStateAtWater.is(net.minecraft.world.level.block.Blocks.WATER)) {
                     System.out.println("[COBWEB] Collecting water at saved position...");
                     
                     if (state.cobwebEscapeSlot >= 0 && state.cobwebEscapeSlot < 9) {

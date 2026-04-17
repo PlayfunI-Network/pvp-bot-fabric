@@ -180,9 +180,9 @@ public class MovementCalculator {
         BlockState state = world.getBlockState(pos);
         return state.getBlock() instanceof net.minecraft.world.level.block.LadderBlock ||
                state.getBlock() instanceof net.minecraft.world.level.block.VineBlock ||
-               state.isOf(net.minecraft.world.level.block.Blocks.SCAFFOLDING) ||
-               state.isOf(net.minecraft.world.level.block.Blocks.TWISTING_VINES) ||
-               state.isOf(net.minecraft.world.level.block.Blocks.WEEPING_VINES);
+               state.is(net.minecraft.world.level.block.Blocks.SCAFFOLDING) ||
+               state.is(net.minecraft.world.level.block.Blocks.TWISTING_VINES) ||
+               state.is(net.minecraft.world.level.block.Blocks.WEEPING_VINES);
     }
     
     

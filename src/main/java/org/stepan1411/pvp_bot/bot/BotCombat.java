@@ -742,7 +742,7 @@ public class BotCombat {
         if (settings.isCobwebEnabled() && distance < 6.0 && distance > 2.0 && state.cobwebCooldown <= 0 && !state.isPlacingCobweb) {
 
             if (target instanceof net.minecraft.world.entity.LivingEntity living) {
-                Vec3 targetVel = living.getVelocity();
+                Vec3 targetVel = living.getDeltaMovement();
                 double targetSpeed = Math.sqrt(targetVel.x * targetVel.x + targetVel.z * targetVel.z);
                 if (targetSpeed > 0.08) {
                     tryPlaceCobweb(bot, target, server);

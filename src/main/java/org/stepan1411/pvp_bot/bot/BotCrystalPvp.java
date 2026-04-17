@@ -596,14 +596,14 @@ public class BotCrystalPvp {
         
 
         BlockPos[] candidates = {
-            targetPos.north(),
-            targetPos.south(),
-            targetPos.east(),
-            targetPos.west(),
-            targetPos.north().east(),
-            targetPos.north().west(),
-            targetPos.south().east(),
-            targetPos.south().west(),
+            targetPos.relative(net.minecraft.core.Direction.NORTH),
+            targetPos.relative(net.minecraft.core.Direction.SOUTH),
+            targetPos.relative(net.minecraft.core.Direction.EAST),
+            targetPos.relative(net.minecraft.core.Direction.WEST),
+            targetPos.relative(net.minecraft.core.Direction.NORTH).relative(net.minecraft.core.Direction.EAST),
+            targetPos.relative(net.minecraft.core.Direction.NORTH).relative(net.minecraft.core.Direction.WEST),
+            targetPos.relative(net.minecraft.core.Direction.SOUTH).relative(net.minecraft.core.Direction.EAST),
+            targetPos.relative(net.minecraft.core.Direction.SOUTH).relative(net.minecraft.core.Direction.WEST),
         };
         
         for (BlockPos pos : candidates) {
